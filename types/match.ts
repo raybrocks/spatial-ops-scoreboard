@@ -22,5 +22,7 @@ export interface MatchData {
   team2Deaths: number;
   team1Score: number;
   team2Score: number;
+  team1Name?: string;
+  team2Name?: string;
   playerStats: PlayerStat[];
 }

@@ -2,56 +2,68 @@
 
 import { useState, useEffect } from 'react';
 import { MatchData } from '@/types/match';
-
-const STORAGE_KEY = 'vr_arcade_matches';
+import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function useMatchData() {
   const [matches, setMatches] = useState<MatchData[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const storedMatches = localStorage.getItem(STORAGE_KEY);
-    if (storedMatches) {
-      try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMatches(JSON.parse(storedMatches));
-      } catch (e) {
-        console.error('Failed to parse stored matches', e);
-      }
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsLoaded(true);
+    // Listen to matches collection in real-time
+    const matchesRef = collection(db, 'matches');
+    // Using onSnapshot for real-time updates
+    const unsubscribe = onSnapshot(matchesRef, (snapshot) => {
+      const fetchedMatches: MatchData[] = [];
+      snapshot.forEach((doc) => {
+        fetchedMatches.push(doc.data() as MatchData);
+      });
+      setMatches(fetchedMatches);
+      setIsLoaded(true);
+    }, (error) => {
+      console.error("Error fetching matches from Firestore:", error);
+      setIsLoaded(true);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const addMatch = (newMatch: MatchData) => {
-    setMatches((prevMatches) => {
-      // Check if match already exists
-      if (prevMatches.some((m) => m.matchId === newMatch.matchId)) {
-        return prevMatches;
-      }
-      const updatedMatches = [...prevMatches, newMatch];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedMatches));
-      return updatedMatches;
-    });
+  const addMatch = async (newMatch: MatchData) => {
+    try {
+      await setDoc(doc(db, 'matches', newMatch.matchId), newMatch);
+    } catch (error) {
+      console.error("Error adding match to Firestore:", error);
+      throw error;
+    }
   };
 
-  const removeMatch = (matchId: string) => {
-    setMatches((prevMatches) => {
-      const updatedMatches = prevMatches.filter((m) => m.matchId !== matchId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedMatches));
-      return updatedMatches;
-    });
+  const removeMatch = async (matchId: string) => {
+    try {
+      await deleteDoc(doc(db, 'matches', matchId));
+    } catch (error) {
+      console.error("Error removing match from Firestore:", error);
+      throw error;
+    }
+  };
+
+  const updateMatch = async (matchId: string, updates: Partial<MatchData>) => {
+    try {
+      await updateDoc(doc(db, 'matches', matchId), updates);
+    } catch (error) {
+      console.error("Error updating match in Firestore:", error);
+      throw error;
+    }
   };
 
   const clearAllMatches = () => {
-    setMatches([]);
-    localStorage.removeItem(STORAGE_KEY);
+    console.warn("clearAllMatches is disabled when using Firestore for safety.");
   };
 
   return {
     matches,
     addMatch,
     removeMatch,
+    updateMatch,
     clearAllMatches,
     isLoaded,
   };
