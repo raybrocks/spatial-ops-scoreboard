@@ -1,0 +1,3 @@
+# User Preferences
+- The user identifies as a "vibe-coder" learning fullstack.
+- IMPORTANT: When requiring the user to perform manual actions outside the code (e.g., in Firebase, Supabase, Github, Vercel), provide DETAILED, step-by-step descriptions of exactly how to perform those actions. Do not assume prior knowledge of these platforms.
