@@ -122,9 +122,15 @@ export default function Home() {
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page { margin: 0.5cm; }
+          *, *::before, *::after {
+            background: transparent !important;
+            color: black !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+            border-color: #999 !important;
+          }
           body {
             background: white !important;
-            color: black !important;
           }
           .no-print {
             display: none !important;
@@ -132,14 +138,7 @@ export default function Home() {
           .print-section {
             page-break-inside: avoid;
             break-inside: avoid;
-            border: 1px solid #e2e8f0 !important;
-            box-shadow: none !important;
-            background: white !important;
-            color: black !important;
-          }
-          * {
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            border: 1px solid #999 !important;
           }
         }
       `}} />
@@ -362,14 +361,14 @@ function TeamTable({ teamName, stats, color }: { teamName: string, stats: Player
   return (
     <div className="bg-white/5 border border-white/10 rounded-md overflow-hidden print:border-gray-200 print:bg-transparent">
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse table-fixed">
           <thead className="bg-white/5 print:bg-gray-100">
             <tr className="text-[8px] uppercase tracking-widest text-gray-500 print:text-black print:text-[6px]">
-              <th className="py-1.5 px-2 font-bold print:py-0.5 print:px-1">Player</th>
-              <th className="py-1.5 px-1 font-bold text-center print:py-0.5 print:px-0.5" title="Score">Score</th>
-              <th className="py-1.5 px-1 font-bold text-center print:py-0.5 print:px-0.5" title="Kills">Kills</th>
-              <th className="py-1.5 px-1 font-bold text-center print:py-0.5 print:px-0.5" title="Deaths">Deaths</th>
-              <th className="py-1.5 px-1 font-bold text-center print:py-0.5 print:px-0.5" title="Assists">AST</th>
+              <th className="py-1.5 px-2 font-bold truncate print:py-0.5 print:px-1">Player</th>
+              <th className="py-1.5 px-1 font-bold text-center w-[18%] print:py-0.5 print:px-0.5" title="Score">Score</th>
+              <th className="py-1.5 px-1 font-bold text-center w-[12%] print:py-0.5 print:px-0.5" title="Kills">Kills</th>
+              <th className="py-1.5 px-1 font-bold text-center w-[12%] print:py-0.5 print:px-0.5" title="Deaths">Deaths</th>
+              <th className="py-1.5 px-1 font-bold text-center w-[12%] print:py-0.5 print:px-0.5" title="Assists">AST</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5 text-[10px] print:divide-gray-200 print:text-[8px]">
@@ -382,16 +381,18 @@ function TeamTable({ teamName, stats, color }: { teamName: string, stats: Player
                 const isMVP = idx === 0 && player.score > 0;
                 return (
                   <tr key={idx} className={`hover:bg-white/[0.02] print:bg-transparent ${isMVP && !player.isBot ? rowHighlight : player.isBot ? 'opacity-70 italic' : ''}`}>
-                    <td className="py-1.5 px-2 font-medium flex items-center flex-wrap gap-1 text-gray-300 print:text-black print:py-0.5 print:px-1">
-                      <span className={`truncate max-w-[80px] print:max-w-[50px] ${isMVP && !player.isBot ? 'font-bold text-white print:text-black' : ''}`} title={player.playerName}>
-                        {player.playerName}
-                      </span>
-                      {isMVP && !player.isBot && (
-                        <span className={`text-[7px] px-1 rounded uppercase tracking-wider font-bold print:text-[5px] print:bg-gray-200 print:text-black ${mvpBadge}`}>MVP</span>
-                      )}
-                      {player.isBot && (
-                        <span className="text-[7px] border border-white/20 text-gray-500 px-1 rounded uppercase font-bold print:border-gray-300 print:text-[5px]">Bot</span>
-                      )}
+                    <td className="py-1.5 px-2 font-medium text-gray-300 print:text-black print:py-0.5 print:px-1 truncate">
+                      <div className="flex items-center gap-1 w-full truncate">
+                        <span className={`truncate ${isMVP && !player.isBot ? 'font-bold text-white print:text-black' : ''}`} title={player.playerName}>
+                          {player.playerName}
+                        </span>
+                        {isMVP && !player.isBot && (
+                          <span className={`shrink-0 text-[7px] px-1 rounded uppercase tracking-wider font-bold print:text-[5px] print:bg-gray-200 print:text-black ${mvpBadge}`}>MVP</span>
+                        )}
+                        {player.isBot && (
+                          <span className="shrink-0 text-[7px] border border-white/20 text-gray-500 px-1 rounded uppercase font-bold print:border-gray-300 print:text-[5px]">Bot</span>
+                        )}
+                      </div>
                     </td>
                     <td className={`py-1.5 px-1 font-mono text-center print:py-0.5 print:text-black ${textColor}`}>{player.score}</td>
                     <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.kills}</td>
