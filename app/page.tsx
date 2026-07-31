@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
@@ -13,6 +13,7 @@ export default function Home() {
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   
   const [editingTeam, setEditingTeam] = useState<{matchId: string, team: 1 | 2} | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -108,11 +109,31 @@ export default function Home() {
     });
   };
 
-  const sortedMatches = useMemo(() => {
-    return [...matches]
-      .filter(m => m.matchStartTimestamp)
-      .sort((a, b) => new Date(a.matchStartTimestamp).getTime() - new Date(b.matchStartTimestamp).getTime());
+  const availableDates = useMemo(() => {
+    const dates = new Set<string>();
+    matches.forEach(m => {
+      if (m.matchStartTimestamp) {
+        dates.add(format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd'));
+      }
+    });
+    return Array.from(dates).sort((a, b) => b.localeCompare(a));
   }, [matches]);
+
+  useEffect(() => {
+    if (availableDates.length > 0 && !selectedDate) {
+      setSelectedDate(availableDates[0]); // Default to most recent date
+    }
+  }, [availableDates, selectedDate]);
+
+  const sortedMatches = useMemo(() => {
+    let filtered = [...matches].filter(m => m.matchStartTimestamp);
+    
+    if (selectedDate) {
+      filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === selectedDate);
+    }
+    
+    return filtered.sort((a, b) => new Date(a.matchStartTimestamp).getTime() - new Date(b.matchStartTimestamp).getTime());
+  }, [matches, selectedDate]);
 
   if (!isLoaded) return <div className="p-8 text-center">Loading...</div>;
 
@@ -170,6 +191,31 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {/* Date Filter (No Print) */}
+      {availableDates.length > 0 && (
+        <div className="bg-[#0D0D0D] border-b border-white/5 p-3 no-print overflow-x-auto">
+          <div className="max-w-6xl mx-auto flex items-center gap-2">
+            <span className="text-xs uppercase tracking-widest text-gray-500 font-bold mr-2 whitespace-nowrap">Filter by date:</span>
+            <div className="flex gap-2">
+              {availableDates.map(date => (
+                <button
+                  key={date}
+                  onClick={() => setSelectedDate(date)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors whitespace-nowrap ${selectedDate === date ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'}`}
+                >
+                  {format(parseISO(date), 'MMM d, yyyy')}
+                </button>
+              ))}
+            </div>
+            {selectedDate && (
+              <button onClick={() => setSelectedDate(null)} className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 hover:text-white transition-colors whitespace-nowrap ml-2">
+                Show All
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <main className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
         
