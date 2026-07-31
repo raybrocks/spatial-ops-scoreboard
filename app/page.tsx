@@ -2,9 +2,17 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X } from 'lucide-react';
+import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, CheckSquare } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { MatchData, PlayerStat } from '@/types/match';
+
+const formatGameMode = (mode?: string) => {
+  if (!mode) return '';
+  const lower = mode.toLowerCase();
+  if (lower === 'teamdeathmatch') return 'TEAM DEATHMATCH';
+  if (lower === 'freeforall') return 'FREE FOR ALL';
+  return mode;
+};
 
 export default function Home() {
   const { matches, addMatch, removeMatch, updateMatch, isLoaded } = useMatchData();
@@ -135,6 +143,38 @@ export default function Home() {
     return filtered.sort((a, b) => new Date(a.matchStartTimestamp).getTime() - new Date(b.matchStartTimestamp).getTime());
   }, [matches, selectedDate]);
 
+  const selectAllForPrint = () => {
+    if (selectedForPrint.size === sortedMatches.length && sortedMatches.length > 0) {
+      setSelectedForPrint(new Set());
+    } else {
+      setSelectedForPrint(new Set(sortedMatches.map(m => m.matchId)));
+    }
+  };
+
+  const dailySummary = useMemo(() => {
+    const summary: Record<string, { matches: number, totalScore: number, wins: number }> = {};
+    
+    sortedMatches.forEach(match => {
+      const t1 = match.team1Name || 'Team 1';
+      const t2 = match.team2Name || 'Team 2';
+      
+      if (!summary[t1]) summary[t1] = { matches: 0, totalScore: 0, wins: 0 };
+      if (!summary[t2]) summary[t2] = { matches: 0, totalScore: 0, wins: 0 };
+      
+      summary[t1].matches += 1;
+      summary[t1].totalScore += match.team1Score;
+      if (match.team1Score > match.team2Score) summary[t1].wins += 1;
+      
+      summary[t2].matches += 1;
+      summary[t2].totalScore += match.team2Score;
+      if (match.team2Score > match.team1Score) summary[t2].wins += 1;
+    });
+    
+    return Object.entries(summary)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.totalScore - a.totalScore);
+  }, [sortedMatches]);
+
   if (!isLoaded) return <div className="p-8 text-center">Loading...</div>;
 
   return (
@@ -174,11 +214,19 @@ export default function Home() {
           
           <div className="flex gap-3">
              <button
+              onClick={selectAllForPrint}
+              disabled={sortedMatches.length === 0}
+              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md text-xs uppercase tracking-widest transition-colors"
+            >
+              <CheckSquare className="w-4 h-4" />
+              <span className="hidden sm:inline">{selectedForPrint.size === sortedMatches.length && sortedMatches.length > 0 ? 'Deselect All' : 'Select All'}</span>
+            </button>
+             <button
               onClick={handleAdminToggle}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs uppercase tracking-widest transition-colors ${isAdminMode ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}`}
             >
               {isAdminMode ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-              {isAdminMode ? 'Admin' : 'Operator'}
+              <span className="hidden sm:inline">{isAdminMode ? 'Admin' : 'Operator'}</span>
             </button>
              <button
               onClick={() => window.print()}
@@ -186,7 +234,7 @@ export default function Home() {
               className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md text-xs uppercase tracking-widest transition-colors"
             >
               <Printer className="w-4 h-4" />
-              Print Selected ({selectedForPrint.size})
+              <span className="hidden sm:inline">Print ({selectedForPrint.size})</span>
             </button>
           </div>
         </div>
@@ -268,6 +316,29 @@ export default function Home() {
         </section>
         )}
 
+        {/* Daily Summary */}
+        {dailySummary.length > 0 && (
+          <div className="mb-6 print-section">
+            <h3 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-3 flex items-center gap-2 print:text-black">
+              <Trophy className="w-4 h-4 print:hidden" />
+              Daily Summary: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
+              {dailySummary.map((team, idx) => (
+                <div key={team.name} className={`bg-[#121212] border ${idx === 0 ? 'border-yellow-500/50 bg-yellow-950/20' : 'border-white/10'} rounded-lg p-3 print:bg-transparent print:border-gray-300 print:p-2`}>
+                  <div className="text-xs text-gray-500 uppercase tracking-widest font-bold print:text-black print:text-[8px] truncate">
+                    {team.name} {idx === 0 && <span className="ml-1 text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print:bg-gray-200 print:text-black">1ST</span>}
+                  </div>
+                  <div className="text-2xl font-black text-white mt-1 print:text-black print:text-lg">{team.totalScore}</div>
+                  <div className="text-[10px] text-gray-400 mt-1 print:text-black print:text-[8px]">
+                    {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Matches List */}
         <div className={sortedMatches.length === 0 ? "" : "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 print:grid-cols-2 print:gap-2 print:text-[10px]"}>
           {sortedMatches.length === 0 ? (
@@ -297,16 +368,15 @@ export default function Home() {
                         className="w-3.5 h-3.5 rounded border-white/10 bg-white/5 text-cyan-500 cursor-pointer"
                         title="Select for Print"
                       />
-                      <span className="font-mono text-cyan-400">{match.matchId.split('-')[0]}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-300 uppercase tracking-widest">
-                        {match.gameMode}
+                      <span className="text-cyan-400 font-bold print:text-black">
+                        {format(parseISO(match.matchStartTimestamp), 'dd.MM.yy HH:mm')}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-300 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black">
+                        {formatGameMode(match.gameMode)}
                       </span>
                     </div>
                     
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-gray-400 font-medium">
-                        {format(parseISO(match.matchStartTimestamp), 'dd.MM.yy HH:mm')}
-                      </span>
                       {isAdminMode && (
                         <button 
                           onClick={() => removeMatch(match.matchId)}
