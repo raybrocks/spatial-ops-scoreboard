@@ -177,6 +177,41 @@ export default function Home() {
       .sort((a, b) => b.totalScore - a.totalScore);
   }, [sortedMatches]);
 
+  const playerSummary = useMemo(() => {
+    const summary: Record<string, { score: number, kills: number, matches: number, mvps: number, isBot: boolean, teamName: string }> = {};
+    
+    sortedMatches.forEach(match => {
+      const t1Stats = match.playerStats.filter(p => p.team === 1).sort((a, b) => b.score - a.score);
+      const t2Stats = match.playerStats.filter(p => p.team === 2).sort((a, b) => b.score - a.score);
+      
+      const t1Mvp = t1Stats.length > 0 && t1Stats[0].score > 0 && !t1Stats[0].isBot ? t1Stats[0].playerName : null;
+      const t2Mvp = t2Stats.length > 0 && t2Stats[0].score > 0 && !t2Stats[0].isBot ? t2Stats[0].playerName : null;
+
+      match.playerStats.forEach(player => {
+        if (!summary[player.playerName]) {
+          summary[player.playerName] = { score: 0, kills: 0, matches: 0, mvps: 0, isBot: player.isBot, teamName: '' };
+        }
+        
+        if (!summary[player.playerName].teamName) {
+          summary[player.playerName].teamName = player.team === 1 ? (match.team1Name || 'Team 1') : (match.team2Name || 'Team 2');
+        }
+
+        summary[player.playerName].score += player.score;
+        summary[player.playerName].kills += player.kills;
+        summary[player.playerName].matches += 1;
+        
+        if (!player.isBot && (player.playerName === t1Mvp || player.playerName === t2Mvp)) {
+          summary[player.playerName].mvps += 1;
+        }
+      });
+    });
+
+    return Object.entries(summary)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .filter(p => !p.isBot) // only show real players
+      .sort((a, b) => b.score - a.score);
+  }, [sortedMatches]);
+
   if (!isLoaded) return <div className="p-8 text-center">Loading...</div>;
 
   return (
@@ -203,6 +238,10 @@ export default function Home() {
             break-inside: avoid;
             border: 1px solid #999 !important;
           }
+          .print-page-break {
+            page-break-after: always !important;
+            break-after: page !important;
+          }
           .print-color-blue {
             background-color: rgba(59, 130, 246, 0.15) !important;
             color: #2563eb !important;
@@ -220,15 +259,18 @@ export default function Home() {
         }
       `}} />
 
-      {/* Header (No Print) */}
-      <header className="border-b border-white/10 bg-[#0D0D0D] p-4 no-print">
+      {/* Header */}
+      <header className="border-b border-white/10 bg-[#0D0D0D] p-4 print:bg-transparent print:border-0 print:p-0 print:mb-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <Trophy className="w-8 h-8 text-cyan-400" />
-            <h1 className="text-xl font-bold tracking-tight text-cyan-400">MIXED REALITY SCOREBOARD</h1>
+          <div className="flex items-center gap-3 justify-center md:justify-start w-full md:w-auto">
+            <Trophy className="w-8 h-8 text-cyan-400 print:hidden" />
+            <img src="/logo.png" alt="KRS VR Arena" className="hidden print:block h-16 object-contain" />
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold tracking-tight text-cyan-400 print:text-black print:text-2xl print:tracking-widest">MIXED REALITY SHOOTER</h1>
+            </div>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-3 no-print">
              <button
               onClick={selectAllForPrint}
               disabled={sortedMatches.length === 0}
@@ -344,9 +386,11 @@ export default function Home() {
         </section>
         )}
 
-        {/* Daily Summary */}
-        {dailySummary.length > 0 && (
-          <div className="mb-6 print-section">
+        {/* Summaries Container with Page Break */}
+        <div className="print-page-break">
+          {/* Daily Summary */}
+          {dailySummary.length > 0 && (
+            <div className="mb-6 print-section">
             <h3 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-3 flex items-center gap-2 print:text-black">
               <Trophy className="w-4 h-4 print:hidden" />
               Daily Summary: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
@@ -367,8 +411,51 @@ export default function Home() {
           </div>
         )}
 
+        {/* Player Leaderboard */}
+        {playerSummary.length > 0 && (
+          <div className="mb-8 print-section">
+            <h3 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-3 flex items-center gap-2 print:text-black">
+              <Trophy className="w-4 h-4 print:hidden" />
+              Player Leaderboard: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
+            </h3>
+            <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead className="bg-white/5 print:bg-gray-100">
+                    <tr className="text-[10px] uppercase tracking-widest text-gray-500 print:text-black print:text-[8px]">
+                      <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 w-[35%]">Player</th>
+                      <th className="py-2 px-2 font-bold truncate print:py-1 print:px-1 w-[20%]">Team</th>
+                      <th className="py-2 px-2 font-bold text-center w-[12%] print:py-1 print:px-1">Score</th>
+                      <th className="py-2 px-2 font-bold text-center w-[11%] print:py-1 print:px-1">Kills</th>
+                      <th className="py-2 px-2 font-bold text-center w-[11%] print:py-1 print:px-1">Matches</th>
+                      <th className="py-2 px-2 font-bold text-center w-[11%] print:py-1 print:px-1">MVPs</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
+                    {playerSummary.map((player, idx) => (
+                      <tr key={player.name} className={`hover:bg-white/[0.02] print:bg-transparent ${idx === 0 ? 'bg-yellow-500/5' : ''}`}>
+                        <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2">
+                          <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
+                          <span className={`truncate ${idx === 0 ? 'text-yellow-500 font-bold' : ''}`}>{player.name}</span>
+                          {idx === 0 && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print-color-orange">1ST</span>}
+                        </td>
+                        <td className="py-2 px-2 text-gray-500 text-[9px] uppercase tracking-widest truncate print:text-gray-600 print:py-1 print:px-1">{player.teamName}</td>
+                        <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
+                        <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.kills}</td>
+                        <td className="py-2 px-2 text-center text-gray-500 print:py-1 print:px-1 print:text-black">{player.matches}</td>
+                        <td className="py-2 px-2 text-center text-yellow-600/70 print:py-1 print:px-1 print:text-black">{player.mvps > 0 ? player.mvps : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+        </div> {/* End Summaries Container */}
+
         {/* Matches List */}
-        <div className={sortedMatches.length === 0 ? "" : "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 print:grid-cols-2 print:gap-2 print:text-[10px]"}>
+        <div className={sortedMatches.length === 0 ? "" : "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 print:grid-cols-1 print:gap-2 print:text-[10px]"}>
           {sortedMatches.length === 0 ? (
             <div className="text-center py-12 bg-[#121212] rounded-xl border border-white/10 no-print">
               <Trophy className="w-12 h-12 text-gray-700 mx-auto mb-4" />
@@ -485,7 +572,7 @@ export default function Home() {
                   </div>
 
                   {/* Player Stats Tables */}
-                  <div className="px-3 pb-3 grid grid-cols-1 gap-3 flex-1 print:p-1.5 print:gap-1.5">
+                  <div className="px-3 pb-3 grid grid-cols-1 gap-3 flex-1 print:p-1.5 print:gap-2 print:grid-cols-2">
                     <TeamTable teamName="Team 1" stats={match.playerStats.filter(p => p.team === 1)} color="blue" />
                     <TeamTable teamName="Team 2" stats={match.playerStats.filter(p => p.team === 2)} color="orange" />
                   </div>
