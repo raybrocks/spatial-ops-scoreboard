@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, CheckSquare } from 'lucide-react';
+import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { MatchData, PlayerStat } from '@/types/match';
 
@@ -119,6 +119,8 @@ export default function Home() {
 
   const availableDates = useMemo(() => {
     const dates = new Set<string>();
+    const today = format(new Date(), 'yyyy-MM-dd');
+    dates.add(today);
     matches.forEach(m => {
       if (m.matchStartTimestamp) {
         dates.add(format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd'));
@@ -128,10 +130,10 @@ export default function Home() {
   }, [matches]);
 
   useEffect(() => {
-    if (availableDates.length > 0 && !selectedDate) {
-      setSelectedDate(availableDates[0]); // Default to most recent date
+    if (!selectedDate) {
+      setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
     }
-  }, [availableDates, selectedDate]);
+  }, [selectedDate]);
 
   const sortedMatches = useMemo(() => {
     let filtered = [...matches].filter(m => m.matchStartTimestamp);
@@ -254,27 +256,39 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Date Filter (No Print) */}
+      {/* Date Navigation (No Print) */}
       {availableDates.length > 0 && (
-        <div className="bg-[#0D0D0D] border-b border-white/5 p-3 no-print overflow-x-auto">
-          <div className="max-w-6xl mx-auto flex items-center gap-2">
-            <span className="text-xs uppercase tracking-widest text-gray-500 font-bold mr-2 whitespace-nowrap">Filter by date:</span>
-            <div className="flex gap-2">
-              {availableDates.map(date => (
-                <button
-                  key={date}
-                  onClick={() => setSelectedDate(date)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors whitespace-nowrap ${selectedDate === date ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'}`}
-                >
-                  {format(parseISO(date), 'MMM d, yyyy')}
-                </button>
-              ))}
-            </div>
-            {selectedDate && (
-              <button onClick={() => setSelectedDate(null)} className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 hover:text-white transition-colors whitespace-nowrap ml-2">
-                Show All
-              </button>
-            )}
+        <div className="bg-[#0D0D0D] border-b border-white/5 p-3 no-print">
+          <div className="max-w-6xl mx-auto flex justify-center items-center gap-6">
+            <button 
+              onClick={() => {
+                if (selectedDate) {
+                  const idx = availableDates.indexOf(selectedDate);
+                  if (idx < availableDates.length - 1) setSelectedDate(availableDates[idx + 1]);
+                }
+              }}
+              disabled={!selectedDate || availableDates.indexOf(selectedDate) === availableDates.length - 1}
+              className="p-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <span className="text-sm uppercase tracking-widest text-cyan-400 font-bold min-w-[140px] text-center">
+              {selectedDate ? format(parseISO(selectedDate), 'dd.MM.yyyy') : '...'}
+            </span>
+            
+            <button 
+              onClick={() => {
+                if (selectedDate) {
+                  const idx = availableDates.indexOf(selectedDate);
+                  if (idx > 0) setSelectedDate(availableDates[idx - 1]);
+                }
+              }}
+              disabled={!selectedDate || availableDates.indexOf(selectedDate) === 0}
+              className="p-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
       )}
