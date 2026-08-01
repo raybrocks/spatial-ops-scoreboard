@@ -17,30 +17,21 @@ const formatGameMode = (mode?: string) => {
 export default function SpectatorPage() {
   const { matches, isLoaded } = useMatchData();
 
-  const mostRecentDate = useMemo(() => {
-    if (matches.length === 0) return null;
-    const sorted = [...matches]
-      .filter(m => m.matchStartTimestamp)
-      .sort((a, b) => new Date(b.matchStartTimestamp).getTime() - new Date(a.matchStartTimestamp).getTime());
-    if (sorted.length > 0) return format(parseISO(sorted[0].matchStartTimestamp), 'yyyy-MM-dd');
-    return null;
-  }, [matches]);
+  const todayDate = useMemo(() => {
+    return format(new Date(), 'yyyy-MM-dd');
+  }, []);
 
   const sortedMatches = useMemo(() => {
     let filtered = [...matches].filter(m => m.matchStartTimestamp);
-    if (mostRecentDate) {
-      filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === mostRecentDate);
-    }
+    filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === todayDate);
     return filtered.sort((a, b) => new Date(b.matchStartTimestamp).getTime() - new Date(a.matchStartTimestamp).getTime());
-  }, [matches, mostRecentDate]);
+  }, [matches, todayDate]);
 
   const dailySummary = useMemo(() => {
     const summary: Record<string, { matches: number, totalScore: number, wins: number }> = {};
     
     let allFiltered = [...matches].filter(m => m.matchStartTimestamp);
-    if (mostRecentDate) {
-      allFiltered = allFiltered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === mostRecentDate);
-    }
+    allFiltered = allFiltered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === todayDate);
 
     allFiltered.forEach(match => {
       const t1 = match.team1Name || 'Team 1';
@@ -61,7 +52,7 @@ export default function SpectatorPage() {
     return Object.entries(summary)
       .map(([name, stats]) => ({ name, ...stats }))
       .sort((a, b) => b.totalScore - a.totalScore);
-  }, [matches, mostRecentDate]);
+  }, [matches, todayDate]);
 
   if (!isLoaded) return <div className="h-screen w-screen bg-[#0A0A0A]"></div>;
 
@@ -79,7 +70,7 @@ export default function SpectatorPage() {
                <Trophy className="w-10 h-10 text-yellow-500" />
                <div>
                  <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">Leaderboard</div>
-                 <div className="text-base font-black text-white">{mostRecentDate ? format(parseISO(mostRecentDate), 'dd.MM.yyyy') : ''}</div>
+                 <div className="text-base font-black text-white">{format(new Date(), 'dd.MM.yyyy')}</div>
                </div>
             </div>
             

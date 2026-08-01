@@ -17,32 +17,23 @@ const formatGameMode = (mode?: string) => {
 export default function TVPage() {
   const { matches, isLoaded } = useMatchData();
 
-  const mostRecentDate = useMemo(() => {
-    if (matches.length === 0) return null;
-    const sorted = [...matches]
-      .filter(m => m.matchStartTimestamp)
-      .sort((a, b) => new Date(b.matchStartTimestamp).getTime() - new Date(a.matchStartTimestamp).getTime());
-    if (sorted.length > 0) return format(parseISO(sorted[0].matchStartTimestamp), 'yyyy-MM-dd');
-    return null;
-  }, [matches]);
+  const todayDate = useMemo(() => {
+    return format(new Date(), 'yyyy-MM-dd');
+  }, []);
 
   const sortedMatches = useMemo(() => {
     let filtered = [...matches].filter(m => m.matchStartTimestamp);
-    if (mostRecentDate) {
-      filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === mostRecentDate);
-    }
+    filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === todayDate);
     // Sort NEWEST FIRST for TV display so latest are at the top, limit to 6
     return filtered.sort((a, b) => new Date(b.matchStartTimestamp).getTime() - new Date(a.matchStartTimestamp).getTime()).slice(0, 6);
-  }, [matches, mostRecentDate]);
+  }, [matches, todayDate]);
 
   const dailySummary = useMemo(() => {
     const summary: Record<string, { matches: number, totalScore: number, wins: number }> = {};
     
-    // Calculate summary based on ALL matches for the mostRecentDate, not just the sliced 6
+    // Calculate summary based on ALL matches for todayDate, not just the sliced 6
     let allFiltered = [...matches].filter(m => m.matchStartTimestamp);
-    if (mostRecentDate) {
-      allFiltered = allFiltered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === mostRecentDate);
-    }
+    allFiltered = allFiltered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === todayDate);
 
     allFiltered.forEach(match => {
       const t1 = match.team1Name || 'Team 1';
@@ -63,7 +54,7 @@ export default function TVPage() {
     return Object.entries(summary)
       .map(([name, stats]) => ({ name, ...stats }))
       .sort((a, b) => b.totalScore - a.totalScore);
-  }, [matches, mostRecentDate]);
+  }, [matches, todayDate]);
 
   if (!isLoaded) return <div className="h-screen bg-[#0A0A0A] flex items-center justify-center text-cyan-500 font-bold tracking-widest uppercase">Loading Live Data...</div>;
 
