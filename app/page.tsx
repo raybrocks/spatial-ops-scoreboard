@@ -178,7 +178,7 @@ export default function Home() {
   }, [sortedMatches]);
 
   const playerSummary = useMemo(() => {
-    const summary: Record<string, { score: number, kills: number, matches: number, mvps: number, isBot: boolean, teamName: string }> = {};
+    const summary: Record<string, { score: number, kills: number, deaths: number, assists: number, matches: number, mvps: number, isBot: boolean, teamName: string }> = {};
     
     sortedMatches.forEach(match => {
       const t1Stats = match.playerStats.filter(p => p.team === 1).sort((a, b) => b.score - a.score);
@@ -189,7 +189,7 @@ export default function Home() {
 
       match.playerStats.forEach(player => {
         if (!summary[player.playerName]) {
-          summary[player.playerName] = { score: 0, kills: 0, matches: 0, mvps: 0, isBot: player.isBot, teamName: '' };
+          summary[player.playerName] = { score: 0, kills: 0, deaths: 0, assists: 0, matches: 0, mvps: 0, isBot: player.isBot, teamName: '' };
         }
         
         if (!summary[player.playerName].teamName) {
@@ -198,6 +198,8 @@ export default function Home() {
 
         summary[player.playerName].score += player.score;
         summary[player.playerName].kills += player.kills;
+        summary[player.playerName].deaths += player.deaths || 0;
+        summary[player.playerName].assists += player.assists || 0;
         summary[player.playerName].matches += 1;
         
         if (!player.isBot && (player.playerName === t1Mvp || player.playerName === t2Mvp)) {
@@ -420,21 +422,23 @@ export default function Home() {
             </h3>
             <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse table-fixed">
-                  <thead className="bg-white/5 print:bg-gray-100">
+                <table className="w-full text-left border-collapse min-w-[500px]">
+                  <thead className="bg-[#1A1A1A] print:bg-gray-100">
                     <tr className="text-[10px] uppercase tracking-widest text-gray-500 print:text-black print:text-[8px]">
-                      <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 w-[35%]">Player</th>
-                      <th className="py-2 px-2 font-bold truncate print:py-1 print:px-1 w-[20%]">Team</th>
-                      <th className="py-2 px-2 font-bold text-center w-[12%] print:py-1 print:px-1">Score</th>
-                      <th className="py-2 px-2 font-bold text-center w-[11%] print:py-1 print:px-1">Kills</th>
-                      <th className="py-2 px-2 font-bold text-center w-[11%] print:py-1 print:px-1">Matches</th>
-                      <th className="py-2 px-2 font-bold text-center w-[11%] print:py-1 print:px-1">MVPs</th>
+                      <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#1A1A1A] z-10 print:static print:bg-transparent">Player</th>
+                      <th className="py-2 px-2 font-bold truncate print:py-1 print:px-1 min-w-[70px]">Team</th>
+                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Score</th>
+                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Kills</th>
+                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Deaths</th>
+                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">AST</th>
+                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Matches</th>
+                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">MVPs</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
                     {playerSummary.map((player, idx) => (
-                      <tr key={player.name} className={`hover:bg-white/[0.02] print:bg-transparent ${idx === 0 ? 'bg-yellow-500/5' : ''}`}>
-                        <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2">
+                      <tr key={player.name} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#1a170c]' : 'bg-[#121212]'}`}>
+                        <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
                           <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
                           <span className={`truncate ${idx === 0 ? 'text-yellow-500 font-bold' : ''}`}>{player.name}</span>
                           {idx === 0 && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print-color-orange">1ST</span>}
@@ -442,6 +446,8 @@ export default function Home() {
                         <td className="py-2 px-2 text-gray-500 text-[9px] uppercase tracking-widest truncate print:text-gray-600 print:py-1 print:px-1">{player.teamName}</td>
                         <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
                         <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.kills}</td>
+                        <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.deaths}</td>
+                        <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.assists}</td>
                         <td className="py-2 px-2 text-center text-gray-500 print:py-1 print:px-1 print:text-black">{player.matches}</td>
                         <td className="py-2 px-2 text-center text-yellow-600/70 print:py-1 print:px-1 print:text-black">{player.mvps > 0 ? player.mvps : '-'}</td>
                       </tr>
