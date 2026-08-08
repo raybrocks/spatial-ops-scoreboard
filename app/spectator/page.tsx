@@ -136,7 +136,7 @@ export default function SpectatorPage() {
                 {latestMatch.gameMode?.toLowerCase() === 'survival' ? (
                   <>
                     <div className="flex justify-center items-center mb-5 bg-cyan-950/20 border border-cyan-500/20 rounded-xl p-3 flex-col">
-                       <span className="text-cyan-400 font-bold uppercase text-[10px] tracking-widest">Survival</span>
+                       <span className="text-cyan-400 font-bold uppercase text-[10px] tracking-widest">Survival {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp)}</span>
                        {latestMatch.waveIndex !== undefined && <span className="text-3xl font-black text-white mt-1">Wave {latestMatch.waveIndex + 1}</span>}
                        <span className="text-[10px] text-gray-500 uppercase mt-1">Team Score: <span className="text-white font-bold">{latestMatch.team1Score}</span></span>
                     </div>
@@ -184,7 +184,7 @@ export default function SpectatorPage() {
                     <div key={match.matchId} className="bg-white/5 rounded-lg border border-white/5 flex flex-col p-2 text-[11px]">
                       <div className="flex justify-between items-center border-b border-white/5 pb-1 mb-1.5">
                          <span className="text-gray-400 text-[10px] font-bold">{format(parseISO(match.matchStartTimestamp), 'HH:mm')}</span>
-                         {isSurvival && <span className="text-cyan-500 text-[9px] uppercase tracking-widest">Survival</span>}
+                         {isSurvival && <span className="text-cyan-500 text-[9px] uppercase tracking-widest">Survival {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}</span>}
                       </div>
                       {!isSurvival ? (
                         <div className="flex justify-between items-center px-1">

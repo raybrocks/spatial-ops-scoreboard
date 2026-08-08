@@ -137,7 +137,7 @@ export default function TVPage() {
                 <>
                   <div className="p-4 flex justify-center items-center gap-4 shrink-0 bg-cyan-950/20 border-b border-white/5">
                     <div className="flex flex-col items-center">
-                      <span className="text-cyan-400 font-bold uppercase tracking-widest text-sm">Survival Mode</span>
+                      <span className="text-cyan-400 font-bold uppercase tracking-widest text-sm">Survival Mode {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}</span>
                       {match.waveIndex !== undefined && <span className="text-5xl font-black text-white mt-2">Wave {match.waveIndex + 1}</span>}
                       <span className="text-xs text-gray-500 uppercase mt-2">Team Score: <span className="text-white font-bold">{match.team1Score}</span></span>
                     </div>

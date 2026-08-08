@@ -773,7 +773,7 @@ export default function Home() {
                   ) : (
                     <div className="p-3 flex justify-center items-center gap-3 bg-cyan-950/20 border-b border-white/5 print:bg-transparent print:border-gray-200 print:p-1.5">
                       <div className="flex flex-col items-center">
-                        <span className="text-cyan-400 font-bold uppercase tracking-widest text-xs print:text-black print:text-[10px]">Survival Mode</span>
+                        <span className="text-cyan-400 font-bold uppercase tracking-widest text-xs print:text-black print:text-[10px]">Survival Mode {duration ? ` ${duration}` : ''}</span>
                         {match.waveIndex !== undefined && (
                           <span className="text-2xl font-black text-white mt-1 print:text-black">Wave {match.waveIndex + 1}</span>
                         )}
