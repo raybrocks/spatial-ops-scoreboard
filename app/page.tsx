@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
-import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, CheckSquare, ChevronLeft, ChevronRight, Crosshair } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { MatchData, PlayerStat } from '@/types/match';
 
