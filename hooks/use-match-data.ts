@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MatchData } from '@/types/match';
 import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -28,32 +28,32 @@ export function useMatchData() {
     return () => unsubscribe();
   }, []);
 
-  const addMatch = async (newMatch: MatchData) => {
+  const addMatch = useCallback(async (newMatch: MatchData) => {
     try {
       await setDoc(doc(db, 'matches', newMatch.matchId), newMatch);
     } catch (error) {
       console.error("Error adding match to Firestore:", error);
       throw error;
     }
-  };
+  }, []);
 
-  const removeMatch = async (matchId: string) => {
+  const removeMatch = useCallback(async (matchId: string) => {
     try {
       await deleteDoc(doc(db, 'matches', matchId));
     } catch (error) {
       console.error("Error removing match from Firestore:", error);
       throw error;
     }
-  };
+  }, []);
 
-  const updateMatch = async (matchId: string, updates: Partial<MatchData>) => {
+  const updateMatch = useCallback(async (matchId: string, updates: Partial<MatchData>) => {
     try {
       await updateDoc(doc(db, 'matches', matchId), updates);
     } catch (error) {
       console.error("Error updating match in Firestore:", error);
       throw error;
     }
-  };
+  }, []);
 
   const clearAllMatches = () => {
     console.warn("clearAllMatches is disabled when using Firestore for safety.");

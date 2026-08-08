@@ -137,7 +137,7 @@ export default function Home() {
     const timer = setTimeout(() => {
       fetchFromGameServer();
     }, 0);
-    const interval = setInterval(fetchFromGameServer, 60000);
+    const interval = setInterval(fetchFromGameServer, 15000);
 
     return () => {
       clearTimeout(timer);
