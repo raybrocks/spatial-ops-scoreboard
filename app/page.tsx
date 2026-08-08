@@ -103,9 +103,9 @@ export default function Home() {
 
   const fetchFromGameServer = useCallback(async () => {
     setFetchStatus('fetching');
-    setFetchMessage('Fetching from localhost:7070...');
+    setFetchMessage('Fetching from localhost:7770...');
     try {
-      const res = await fetch('http://localhost:7070/matchstats', {
+      const res = await fetch('http://localhost:7770/matchstats', {
         headers: { 'Accept': 'application/json' },
         cache: 'no-store'
       });
@@ -458,7 +458,7 @@ export default function Home() {
             <div className="flex-1 border border-white/10 rounded-lg p-4 bg-black/20 flex flex-col justify-center">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold uppercase tracking-widest text-white">Auto-Fetch (localhost:7070)</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-white">Auto-Fetch (localhost:7770)</span>
                   <span className="text-[10px] text-gray-500">Automatically fetches latest match every minute</span>
                 </div>
                 <button
