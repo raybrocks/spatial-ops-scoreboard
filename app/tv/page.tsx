@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy, Crosshair } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
@@ -37,6 +37,35 @@ const getMatchDuration = (start?: string, end?: string) => {
 
 export default function TVPage() {
   const { matches, isLoaded } = useMatchData();
+  const [liveMatch, setLiveMatch] = useState<MatchData | null>(null);
+
+  useEffect(() => {
+    const fetchLiveMatch = async () => {
+      try {
+        const res = await fetch('http://localhost:7770/matchsnapshot');
+        if (!res.ok) {
+          setLiveMatch(null);
+          return;
+        }
+        const data = await res.json();
+        if (data && data.matchId) {
+          const isFinished = matches.some(m => m.matchId === data.matchId);
+          if (isFinished) {
+            setLiveMatch(null);
+          } else {
+            setLiveMatch(data);
+          }
+        } else {
+          setLiveMatch(null);
+        }
+      } catch (err) {
+        setLiveMatch(null);
+      }
+    };
+
+    const interval = setInterval(fetchLiveMatch, 1000);
+    return () => clearInterval(interval);
+  }, [matches]);
 
   const todayDate = useMemo(() => {
     return format(new Date(), 'yyyy-MM-dd');
@@ -125,6 +154,23 @@ export default function TVPage() {
 
   return (
     <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans p-6 md:p-12 overflow-hidden flex flex-col">
+      {liveMatch && (
+        <div className="mb-8 shrink-0 flex flex-col items-center">
+           <h1 className="text-2xl font-black tracking-widest uppercase text-red-500 mb-4 flex items-center justify-center gap-3 animate-pulse">
+             <div className="w-4 h-4 bg-red-500 rounded-full shadow-[0_0_15px_rgba(239,68,68,1)]"></div>
+             LIVE MATCH
+           </h1>
+           <div className="w-full max-w-4xl mx-auto shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-xl relative">
+             <div className="absolute inset-0 border-2 border-red-500/50 rounded-xl pointer-events-none z-20"></div>
+             {liveMatch.gameMode?.toLowerCase() === 'survival' ? (
+               <SurvivalCard match={liveMatch} />
+             ) : (
+               <TeamDeathmatchCard match={liveMatch} />
+             )}
+           </div>
+        </div>
+      )}
+
       <div className={`w-full grid ${gridColsClass} gap-12 h-full flex-1 overflow-hidden`}>
         
         {/* TEAM DEATHMATCH SECTION */}
