@@ -1,27 +1,54 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { format, parseISO } from 'date-fns';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { MatchData, PlayerStat } from '@/types/match';
 
-const formatGameMode = (mode?: string) => {
+const formatGameMode = (mode?: string, lifeMode?: string) => {
   if (!mode) return '';
+  let displayMode = mode;
   const lower = mode.toLowerCase();
-  if (lower === 'teamdeathmatch') return 'TEAM DEATHMATCH';
-  if (lower === 'freeforall') return 'FREE FOR ALL';
-  return mode;
+  if (lower === 'teamdeathmatch') displayMode = 'TEAM DEATHMATCH';
+  else if (lower === 'freeforall') displayMode = 'FREE FOR ALL';
+  else displayMode = mode.toUpperCase();
+
+  if (lifeMode && lower === 'survival') {
+    let formattedLifeMode = lifeMode.toUpperCase();
+    if (formattedLifeMode === 'TEAMLIVES') formattedLifeMode = 'TEAM LIVES';
+    if (formattedLifeMode === 'INDIVIDUALLIVES') formattedLifeMode = 'INDIVIDUAL LIVES';
+    
+    return `${displayMode} (${formattedLifeMode})`;
+  }
+
+  return displayMode;
+};
+
+const getMatchDuration = (start?: string, end?: string) => {
+  if (!start || !end) return null;
+  try {
+    const mins = differenceInMinutes(parseISO(end), parseISO(start));
+    if (isNaN(mins) || mins < 0) return null;
+    return `${mins} MIN`;
+  } catch {
+    return null;
+  }
 };
 
 export default function Home() {
   const { matches, addMatch, removeMatch, updateMatch, isLoaded } = useMatchData();
-  const [jsonInput, setJsonInput] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showMatchDetails, setShowMatchDetails] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
+  
+  const [isAutoFetchEnabled, setIsAutoFetchEnabled] = useState(false);
+  const [fetchStatus, setFetchStatus] = useState<'idle' | 'fetching' | 'success' | 'error'>('idle');
+  const [fetchMessage, setFetchMessage] = useState('Auto-fetch is disabled.');
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   
   const [editingTeam, setEditingTeam] = useState<{matchId: string, team: 1 | 2} | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -51,32 +78,72 @@ export default function Home() {
   const handleAdminToggle = () => {
     if (isAdminMode) {
       setIsAdminMode(false);
+      setIsAutoFetchEnabled(false); // Turn off auto-fetch when leaving admin mode
+      setFetchStatus('idle');
+      setFetchMessage('Auto-fetch is disabled.');
     } else {
-      const pin = window.prompt("Enter Admin PIN:");
+      const pin = window.prompt("Enter Operator PIN:");
       if (pin === "5378") {
         setIsAdminMode(true);
+        setIsAutoFetchEnabled(true); // Automatically turn on when entering admin mode
       } else if (pin !== null) {
         alert("Incorrect PIN");
       }
     }
   };
 
-  const handleJsonSubmit = () => {
+  const matchesRef = useRef(matches);
+  useEffect(() => {
+    matchesRef.current = matches;
+  }, [matches]);
+
+  const isDuplicateMatch = useCallback((newMatch: MatchData) => {
+    return matchesRef.current.some(m => m.matchStartTimestamp === newMatch.matchStartTimestamp);
+  }, []);
+
+  const fetchFromGameServer = useCallback(async () => {
+    setFetchStatus('fetching');
+    setFetchMessage('Fetching from localhost:7070...');
     try {
-      setUploadError('');
-      const parsedData = JSON.parse(jsonInput) as MatchData;
+      const res = await fetch('http://localhost:7070/matchstats', {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const parsedData = await res.json() as MatchData;
       
-      // Basic validation
       if (!parsedData.matchId || typeof parsedData.team1Score !== 'number') {
-        throw new Error('Invalid Match Data format.');
+        throw new Error('Invalid Match Data format received.');
       }
 
-      addMatch(parsedData);
-      setJsonInput('');
+      if (isDuplicateMatch(parsedData)) {
+        setFetchStatus('success');
+        setFetchMessage(`Checked at ${format(new Date(), 'HH:mm:ss')} - Latest match already in database.`);
+      } else {
+        await addMatch(parsedData);
+        setFetchStatus('success');
+        setFetchMessage(`Added new match at ${format(new Date(), 'HH:mm:ss')}!`);
+      }
+      setLastFetchTime(new Date());
     } catch (err: any) {
-      setUploadError(err.message || 'Failed to parse JSON.');
+      setFetchStatus('error');
+      setFetchMessage(`Failed to fetch: ${err.message}`);
     }
-  };
+  }, [addMatch, isDuplicateMatch]);
+
+  useEffect(() => {
+    if (!isAutoFetchEnabled) return;
+
+    const timer = setTimeout(() => {
+      fetchFromGameServer();
+    }, 0);
+    const interval = setInterval(fetchFromGameServer, 60000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [isAutoFetchEnabled, fetchFromGameServer]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,14 +153,15 @@ export default function Home() {
     reader.onload = (event) => {
       try {
         const content = event.target?.result as string;
-        setJsonInput(content);
         // Automatically try to submit if it's a file upload
         const parsedData = JSON.parse(content) as MatchData;
         if (!parsedData.matchId || typeof parsedData.team1Score !== 'number') {
           throw new Error('Invalid Match Data format.');
         }
+        if (isDuplicateMatch(parsedData)) {
+          throw new Error('Duplicate match. A match with this timestamp already exists.');
+        }
         addMatch(parsedData);
-        setJsonInput('');
       } catch (err: any) {
         setUploadError(err.message || 'Failed to parse uploaded JSON file.');
       }
@@ -129,12 +197,6 @@ export default function Home() {
     return Array.from(dates).sort((a, b) => b.localeCompare(a));
   }, [matches]);
 
-  useEffect(() => {
-    if (!selectedDate) {
-      setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
-    }
-  }, [selectedDate]);
-
   const sortedMatches = useMemo(() => {
     let filtered = [...matches].filter(m => m.matchStartTimestamp);
     
@@ -153,10 +215,25 @@ export default function Home() {
     }
   };
 
-  const dailySummary = useMemo(() => {
+  const { tdmMatches, survivalMatches } = useMemo(() => {
+    const tdm: MatchData[] = [];
+    const survival: MatchData[] = [];
+    
+    sortedMatches.forEach(m => {
+      const mode = m.gameMode?.toLowerCase() || '';
+      if (mode === 'survival') {
+        survival.push(m);
+      } else if (mode !== 'freeforall') {
+        tdm.push(m);
+      }
+    });
+    return { tdmMatches: tdm, survivalMatches: survival };
+  }, [sortedMatches]);
+
+  const tdmDailySummary = useMemo(() => {
     const summary: Record<string, { matches: number, totalScore: number, wins: number }> = {};
     
-    sortedMatches.forEach(match => {
+    tdmMatches.forEach(match => {
       const t1 = match.team1Name || 'Team 1';
       const t2 = match.team2Name || 'Team 2';
       
@@ -175,12 +252,12 @@ export default function Home() {
     return Object.entries(summary)
       .map(([name, stats]) => ({ name, ...stats }))
       .sort((a, b) => b.totalScore - a.totalScore);
-  }, [sortedMatches]);
+  }, [tdmMatches]);
 
-  const playerSummary = useMemo(() => {
+  const tdmPlayerSummary = useMemo(() => {
     const summary: Record<string, { score: number, kills: number, deaths: number, assists: number, matches: number, mvps: number, isBot: boolean, teamName: string }> = {};
     
-    sortedMatches.forEach(match => {
+    tdmMatches.forEach(match => {
       const t1Stats = match.playerStats.filter(p => p.team === 1).sort((a, b) => b.score - a.score);
       const t2Stats = match.playerStats.filter(p => p.team === 2).sort((a, b) => b.score - a.score);
       
@@ -212,7 +289,37 @@ export default function Home() {
       .map(([name, stats]) => ({ name, ...stats }))
       .filter(p => !p.isBot) // only show real players
       .sort((a, b) => b.score - a.score);
-  }, [sortedMatches]);
+  }, [tdmMatches]);
+
+  const survivalPlayerSummary = useMemo(() => {
+    const summary: Record<string, { score: number, kills: number, deaths: number, matches: number, wins: number }> = {};
+    
+    survivalMatches.forEach(match => {
+      const t1Stats = match.playerStats.filter(p => p.team === 1 && !p.isBot).sort((a, b) => b.score - a.score);
+      const winner = t1Stats.length > 0 && t1Stats[0].score > 0 ? t1Stats[0].playerName : null;
+
+      match.playerStats.forEach(player => {
+        if (player.team !== 1 || player.isBot) return; // Only team 1 players for Survival
+        
+        if (!summary[player.playerName]) {
+          summary[player.playerName] = { score: 0, kills: 0, deaths: 0, matches: 0, wins: 0 };
+        }
+
+        summary[player.playerName].score += player.score;
+        summary[player.playerName].kills += player.kills;
+        summary[player.playerName].deaths += player.deaths || 0;
+        summary[player.playerName].matches += 1;
+        
+        if (player.playerName === winner) {
+          summary[player.playerName].wins += 1;
+        }
+      });
+    });
+
+    return Object.entries(summary)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.score - a.score);
+  }, [survivalMatches]);
 
   if (!isLoaded) return <div className="p-8 text-center">Loading...</div>;
 
@@ -286,7 +393,7 @@ export default function Home() {
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs uppercase tracking-widest transition-colors ${isAdminMode ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}`}
             >
               {isAdminMode ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isAdminMode ? 'Admin' : 'Operator'}</span>
+              <span className="hidden sm:inline">{isAdminMode ? 'Operator' : 'Customer'}</span>
             </button>
              <button
               onClick={() => window.print()}
@@ -339,35 +446,51 @@ export default function Home() {
 
       <main className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
         
-        {/* Upload Section (No Print) */}
+        {/* Admin Control Section (No Print) */}
         {isAdminMode && (
           <section className="bg-[#121212] rounded-xl border border-white/10 p-6 mb-8 no-print">
           <h2 className="text-sm uppercase tracking-widest font-bold mb-4 flex items-center gap-2 text-cyan-400">
             <Upload className="w-4 h-4" />
-            Import Match Result
+            Match Import & Auto-Fetch
           </h2>
           
           <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <label className="block text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">
-                Paste JSON Data
-              </label>
-              <textarea
-                value={jsonInput}
-                onChange={(e) => setJsonInput(e.target.value)}
-                placeholder='{ "matchId": "...", "team1Score": 300 ... }'
-                className="w-full h-32 p-3 bg-black/20 border border-white/10 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 font-mono text-xs resize-none text-gray-300 placeholder:text-gray-700"
-              />
-              {uploadError && (
-                <p className="text-red-400 text-xs mt-2 font-mono">{uploadError}</p>
+            <div className="flex-1 border border-white/10 rounded-lg p-4 bg-black/20 flex flex-col justify-center">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold uppercase tracking-widest text-white">Auto-Fetch (localhost:7070)</span>
+                  <span className="text-[10px] text-gray-500">Automatically fetches latest match every minute</span>
+                </div>
+                <button
+                  onClick={() => setIsAutoFetchEnabled(!isAutoFetchEnabled)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
+                    isAutoFetchEnabled 
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
+                      : 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
+                  }`}
+                >
+                  {isAutoFetchEnabled ? 'Turn OFF' : 'Turn ON'}
+                </button>
+              </div>
+              
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`w-2 h-2 rounded-full ${
+                  fetchStatus === 'fetching' ? 'bg-yellow-400 animate-pulse' :
+                  fetchStatus === 'success' ? 'bg-green-400' :
+                  fetchStatus === 'error' ? 'bg-red-400' : 'bg-gray-600'
+                }`}></span>
+                <span className="text-xs text-gray-400 font-mono">{fetchMessage}</span>
+              </div>
+              
+              {isAutoFetchEnabled && (
+                <button 
+                  onClick={fetchFromGameServer}
+                  disabled={fetchStatus === 'fetching'}
+                  className="mt-4 text-[10px] uppercase tracking-widest text-cyan-500 border border-cyan-500/30 hover:bg-cyan-500/10 px-3 py-1.5 rounded self-start disabled:opacity-50 transition-colors"
+                >
+                  Force Check Now
+                </button>
               )}
-              <button
-                onClick={handleJsonSubmit}
-                disabled={!jsonInput.trim()}
-                className="mt-3 w-full md:w-auto bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-900/50 disabled:text-gray-500 text-white px-6 py-2 rounded-md font-bold text-sm shadow-lg shadow-cyan-900/20 transition-colors"
-              >
-                + ADD MATCH
-              </button>
             </div>
             
             <div className="flex items-center justify-center">
@@ -375,7 +498,7 @@ export default function Home() {
             </div>
 
             <div className="flex-1 flex flex-col justify-center">
-              <label className="flex flex-col items-center justify-center w-full h-32 border border-white/10 border-dashed rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-colors">
+              <label className="flex flex-col items-center justify-center w-full h-full min-h-[120px] border border-white/10 border-dashed rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-colors">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <Upload className="w-8 h-8 text-cyan-500/50 mb-3" />
                   <p className="mb-2 text-sm text-gray-400"><span className="font-bold text-gray-300">Click to upload</span> or drag and drop</p>
@@ -383,6 +506,7 @@ export default function Home() {
                 </div>
                 <input type="file" className="hidden" accept=".json" onChange={handleFileUpload} />
               </label>
+              {uploadError && <p className="text-red-400 text-[10px] mt-2 font-mono text-center">{uploadError}</p>}
             </div>
           </div>
         </section>
@@ -390,78 +514,140 @@ export default function Home() {
 
         {/* Summaries Container with Page Break */}
         <div className="print-page-break">
-          {/* Daily Summary */}
-          {dailySummary.length > 0 && (
-            <div className="mb-6 print-section">
-            <h3 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-3 flex items-center gap-2 print:text-black">
-              <Trophy className="w-4 h-4 print:hidden" />
-              Daily Summary: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
-              {dailySummary.map((team, idx) => (
-                <div key={team.name} className={`bg-[#121212] border ${idx === 0 ? 'border-yellow-500/50 bg-yellow-950/20' : 'border-white/10'} rounded-lg p-3 print:bg-transparent print:border-gray-300 print:p-2`}>
-                  <div className="text-xs text-gray-500 uppercase tracking-widest font-bold print:text-black print:text-[8px] truncate">
-                    {team.name} {idx === 0 && <span className="ml-1 text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print:bg-gray-200 print:text-black">1ST</span>}
-                  </div>
-                  <div className="text-2xl font-black text-white mt-1 print:text-black print:text-lg">{team.totalScore}</div>
-                  <div className="text-[10px] text-gray-400 mt-1 print:text-black print:text-[8px]">
-                    {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
+          
+          {/* TEAM DEATHMATCH SUMMARY */}
+          {tdmMatches.length > 0 && (
+            <div className="mb-8 border-b border-white/5 pb-8 print:border-none print:pb-0">
+              <h2 className="text-sm font-bold tracking-widest uppercase text-yellow-500 mb-4 flex items-center gap-2 print:text-black">
+                <Trophy className="w-4 h-4 print:hidden" />
+                TDM & PVP Summary: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
+              </h2>
+              
+              {/* TDM Team Stats */}
+              {tdmDailySummary.length > 0 && (
+                <div className="mb-6 print-section">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
+                    {tdmDailySummary.map((team, idx) => (
+                      <div key={team.name} className={`bg-[#121212] border ${idx === 0 ? 'border-yellow-500/50 bg-yellow-950/20' : 'border-white/10'} rounded-lg p-3 print:bg-transparent print:border-gray-300 print:p-2`}>
+                        <div className="text-xs text-gray-500 uppercase tracking-widest font-bold print:text-black print:text-[8px] truncate">
+                          {team.name} {idx === 0 && <span className="ml-1 text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print:bg-gray-200 print:text-black">1ST</span>}
+                        </div>
+                        <div className="text-2xl font-black text-white mt-1 print:text-black print:text-lg">{team.totalScore}</div>
+                        <div className="text-[10px] text-gray-400 mt-1 print:text-black print:text-[8px]">
+                          {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              )}
 
-        {/* Player Leaderboard */}
-        {playerSummary.length > 0 && (
-          <div className="mb-8 print-section">
-            <h3 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-3 flex items-center gap-2 print:text-black">
-              <Trophy className="w-4 h-4 print:hidden" />
-              Player Leaderboard: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
-            </h3>
-            <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[500px]">
-                  <thead className="bg-[#1A1A1A] print:bg-gray-100">
-                    <tr className="text-[10px] uppercase tracking-widest text-gray-500 print:text-black print:text-[8px]">
-                      <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#1A1A1A] z-10 print:static print:bg-transparent">Player</th>
-                      <th className="py-2 px-2 font-bold truncate print:py-1 print:px-1 min-w-[70px]">Team</th>
-                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Score</th>
-                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Kills</th>
-                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Deaths</th>
-                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">AST</th>
-                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Matches</th>
-                      <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">MVPs</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
-                    {playerSummary.map((player, idx) => (
-                      <tr key={player.name} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#1a170c]' : 'bg-[#121212]'}`}>
-                        <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
-                          <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
-                          <span className={`truncate ${idx === 0 ? 'text-yellow-500 font-bold' : ''}`}>{player.name}</span>
-                          {idx === 0 && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print-color-orange">1ST</span>}
-                        </td>
-                        <td className="py-2 px-2 text-gray-500 text-[9px] uppercase tracking-widest truncate print:text-gray-600 print:py-1 print:px-1">{player.teamName}</td>
-                        <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
-                        <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.kills}</td>
-                        <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.deaths}</td>
-                        <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.assists}</td>
-                        <td className="py-2 px-2 text-center text-gray-500 print:py-1 print:px-1 print:text-black">{player.matches}</td>
-                        <td className="py-2 px-2 text-center text-yellow-600/70 print:py-1 print:px-1 print:text-black">{player.mvps > 0 ? player.mvps : '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {/* TDM Player Leaderboard */}
+              {tdmPlayerSummary.length > 0 && (
+                <div className="print-section">
+                  <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[500px]">
+                        <thead className="bg-[#1A1A1A] print:bg-gray-100">
+                          <tr className="text-[10px] uppercase tracking-widest text-gray-500 print:text-black print:text-[8px]">
+                            <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#1A1A1A] z-10 print:static print:bg-transparent">Player</th>
+                            <th className="py-2 px-2 font-bold truncate print:py-1 print:px-1 min-w-[70px]">Team</th>
+                            <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Score</th>
+                            <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Kills</th>
+                            <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Deaths</th>
+                            <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">AST</th>
+                            <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Matches</th>
+                            <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">MVPs</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
+                          {tdmPlayerSummary.map((player, idx) => (
+                            <tr key={player.name} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#1a170c]' : 'bg-[#121212]'}`}>
+                              <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
+                                <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
+                                <span className={`truncate ${idx === 0 ? 'text-yellow-500 font-bold' : ''}`}>{player.name}</span>
+                                {idx === 0 && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print-color-orange">1ST</span>}
+                              </td>
+                              <td className="py-2 px-2 text-gray-500 text-[9px] uppercase tracking-widest truncate print:text-gray-600 print:py-1 print:px-1">{player.teamName}</td>
+                              <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
+                              <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.kills}</td>
+                              <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.deaths}</td>
+                              <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.assists}</td>
+                              <td className="py-2 px-2 text-center text-gray-500 print:py-1 print:px-1 print:text-black">{player.matches}</td>
+                              <td className="py-2 px-2 text-center text-yellow-600/70 print:py-1 print:px-1 print:text-black">{player.mvps > 0 ? player.mvps : '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* SURVIVAL SUMMARY */}
+          {survivalMatches.length > 0 && (
+            <div className="mb-8 print-section">
+              <h2 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-4 flex items-center gap-2 print:text-black">
+                <Crosshair className="w-4 h-4 print:hidden" />
+                Survival Summary: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
+              </h2>
+
+              {survivalPlayerSummary.length > 0 && (
+                <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[500px]">
+                      <thead className="bg-[#1A1A1A] print:bg-gray-100">
+                        <tr className="text-[10px] uppercase tracking-widest text-gray-500 print:text-black print:text-[8px]">
+                          <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#1A1A1A] z-10 print:static print:bg-transparent">Player</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Score</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Kills</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Deaths</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Matches</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Wins</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
+                        {survivalPlayerSummary.map((player, idx) => (
+                          <tr key={player.name} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#0f1b21]' : 'bg-[#121212]'}`}>
+                            <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
+                              <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
+                              <span className={`truncate ${idx === 0 ? 'text-cyan-400 font-bold' : ''}`}>{player.name}</span>
+                              {idx === 0 && <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1 py-0.5 rounded">1ST</span>}
+                            </td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
+                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.kills}</td>
+                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.deaths}</td>
+                            <td className="py-2 px-2 text-center text-gray-500 print:py-1 print:px-1 print:text-black">{player.matches}</td>
+                            <td className="py-2 px-2 text-center text-cyan-600/70 print:py-1 print:px-1 print:text-black">{player.wins > 0 ? player.wins : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div> {/* End Summaries Container */}
 
+        {/* Match Details Toggle Section (No Print) */}
+        {sortedMatches.length > 0 && (
+          <div className="mb-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/10 pb-4 no-print mt-12">
+            <h2 className="text-sm uppercase tracking-widest font-bold text-cyan-400">Match Details</h2>
+            <button
+              onClick={() => setShowMatchDetails(!showMatchDetails)}
+              className="bg-cyan-600/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors shadow-lg shadow-cyan-900/20"
+            >
+              {showMatchDetails ? 'Hide match details' : 'Show details from each match'}
+            </button>
+          </div>
+        )}
+
         {/* Matches List */}
-        <div className={sortedMatches.length === 0 ? "" : "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 print:grid-cols-1 print:gap-2 print:text-[10px]"}>
+        <div className={sortedMatches.length === 0 || showMatchDetails ? "block" : "hidden print:block"}>
+          <div className={sortedMatches.length === 0 ? "" : "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 print:grid-cols-1 print:gap-2 print:text-[10px]"}>
           {sortedMatches.length === 0 ? (
             <div className="text-center py-12 bg-[#121212] rounded-xl border border-white/10 no-print">
               <Trophy className="w-12 h-12 text-gray-700 mx-auto mb-4" />
@@ -473,6 +659,7 @@ export default function Home() {
               const isSelected = selectedForPrint.has(match.matchId);
               const team1Won = match.team1Score > match.team2Score;
               const team2Won = match.team2Score > match.team1Score;
+              const duration = getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp);
 
               return (
                 <div 
@@ -493,8 +680,13 @@ export default function Home() {
                         {format(parseISO(match.matchStartTimestamp), 'dd.MM.yy HH:mm')}
                       </span>
                       <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-300 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black">
-                        {formatGameMode(match.gameMode)}
+                        {formatGameMode(match.gameMode, match.lifeMode)}
                       </span>
+                      {duration && (
+                        <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black">
+                          {duration}
+                        </span>
+                      )}
                     </div>
                     
                     <div className="flex items-center gap-3">
@@ -511,88 +703,103 @@ export default function Home() {
                   </div>
 
                   {/* Score Overview */}
-                  <div className="p-3 flex justify-between items-center gap-3 print:p-1.5 print:gap-1">
-                    {/* Team 1 */}
-                    <div className="flex-1 bg-blue-950/20 border border-blue-500/20 rounded-lg p-2 flex flex-col justify-center items-center print:bg-transparent print:border-gray-200 print:p-1">
-                      <div className="text-blue-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0">
-                        {editingTeam?.matchId === match.matchId && editingTeam.team === 1 ? (
-                           <div className="flex items-center gap-1 z-10">
-                             <input 
-                               autoFocus
-                               value={editingName} 
-                               onChange={(e) => setEditingName(e.target.value)} 
-                               onKeyDown={(e) => { if (e.key === 'Enter') saveTeamName(); if (e.key === 'Escape') cancelEdit(); }}
-                               className="bg-black/80 border border-blue-500/50 rounded px-1 w-16 md:w-20 text-center text-blue-400 focus:outline-none focus:border-blue-400"
-                             />
-                             <button onClick={saveTeamName} className="text-green-400 hover:text-green-300"><Check className="w-3 h-3" /></button>
-                             <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-300"><X className="w-3 h-3" /></button>
-                           </div>
-                        ) : (
-                          <>
-                            <span className="truncate max-w-[100px] print:max-w-full">{match.team1Name || 'Team 1'}</span>
-                            <span className="shrink-0 text-[7px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1 py-0.5 rounded tracking-widest print-color-blue print:text-[5px]">BLUE</span>
-                            {team1Won && <span className="text-[8px] bg-blue-500/20 text-blue-300 px-1 py-0.5 rounded print:text-[6px] print:bg-gray-200 print:text-black">WIN</span>}
-                            {isAdminMode && (
-                              <button onClick={() => handleEditTeamName(match.matchId, 1, match.team1Name || 'Team 1')} className="opacity-0 group-hover:opacity-100 absolute -right-1 md:-right-2 top-0 text-blue-400/50 hover:text-blue-400 transition-opacity p-0.5 bg-blue-900/50 rounded no-print">
-                                <Edit2 className="w-2.5 h-2.5" />
-                              </button>
-                            )}
-                          </>
-                        )}
+                  {!isSurvival ? (
+                    <div className="p-3 flex justify-between items-center gap-3 print:p-1.5 print:gap-1">
+                      {/* Team 1 */}
+                      <div className="flex-1 bg-blue-950/20 border border-blue-500/20 rounded-lg p-2 flex flex-col justify-center items-center print:bg-transparent print:border-gray-200 print:p-1">
+                        <div className="text-blue-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0">
+                          {editingTeam?.matchId === match.matchId && editingTeam.team === 1 ? (
+                             <div className="flex items-center gap-1 z-10">
+                               <input 
+                                 autoFocus
+                                 value={editingName} 
+                                 onChange={(e) => setEditingName(e.target.value)} 
+                                 onKeyDown={(e) => { if (e.key === 'Enter') saveTeamName(); if (e.key === 'Escape') cancelEdit(); }}
+                                 className="bg-black/80 border border-blue-500/50 rounded px-1 w-16 md:w-20 text-center text-blue-400 focus:outline-none focus:border-blue-400"
+                               />
+                               <button onClick={saveTeamName} className="text-green-400 hover:text-green-300"><Check className="w-3 h-3" /></button>
+                               <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-300"><X className="w-3 h-3" /></button>
+                             </div>
+                          ) : (
+                            <>
+                              <span className="truncate max-w-[100px] print:max-w-full">{match.team1Name || 'Team 1'}</span>
+                              <span className="shrink-0 text-[7px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1 py-0.5 rounded tracking-widest print-color-blue print:text-[5px]">BLUE</span>
+                              {team1Won && <span className="text-[8px] bg-blue-500/20 text-blue-300 px-1 py-0.5 rounded print:text-[6px] print:bg-gray-200 print:text-black">WIN</span>}
+                              {isAdminMode && (
+                                <button onClick={() => handleEditTeamName(match.matchId, 1, match.team1Name || 'Team 1')} className="opacity-0 group-hover:opacity-100 absolute -right-1 md:-right-2 top-0 text-blue-400/50 hover:text-blue-400 transition-opacity p-0.5 bg-blue-900/50 rounded no-print">
+                                  <Edit2 className="w-2.5 h-2.5" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <div className="text-2xl font-black text-white print:text-black print:text-lg">{match.team1Score}</div>
                       </div>
-                      <div className="text-2xl font-black text-white print:text-black print:text-lg">{match.team1Score}</div>
-                    </div>
-                    
-                    <div className="text-gray-600 font-black text-xs uppercase tracking-widest print:text-black print:text-[8px]">VS</div>
-                    
-                    {/* Team 2 */}
-                    <div className="flex-1 bg-orange-950/20 border border-orange-500/20 rounded-lg p-2 flex flex-col justify-center items-center print:bg-transparent print:border-gray-200 print:p-1">
-                      <div className="text-orange-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0">
-                        {editingTeam?.matchId === match.matchId && editingTeam.team === 2 ? (
-                           <div className="flex items-center gap-1 z-10">
-                             <input 
-                               autoFocus
-                               value={editingName} 
-                               onChange={(e) => setEditingName(e.target.value)} 
-                               onKeyDown={(e) => { if (e.key === 'Enter') saveTeamName(); if (e.key === 'Escape') cancelEdit(); }}
-                               className="bg-black/80 border border-orange-500/50 rounded px-1 w-16 md:w-20 text-center text-orange-400 focus:outline-none focus:border-orange-400"
-                             />
-                             <button onClick={saveTeamName} className="text-green-400 hover:text-green-300"><Check className="w-3 h-3" /></button>
-                             <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-300"><X className="w-3 h-3" /></button>
-                           </div>
-                        ) : (
-                          <>
-                            <span className="truncate max-w-[100px] print:max-w-full">{match.team2Name || 'Team 2'}</span>
-                            <span className="shrink-0 text-[7px] bg-orange-500/10 text-orange-400 border border-orange-500/20 px-1 py-0.5 rounded tracking-widest print-color-orange print:text-[5px]">ORANGE</span>
-                            {team2Won && <span className="text-[8px] bg-orange-500/20 text-orange-300 px-1 py-0.5 rounded print:text-[6px] print:bg-gray-200 print:text-black">WIN</span>}
-                            {isAdminMode && (
-                              <button onClick={() => handleEditTeamName(match.matchId, 2, match.team2Name || 'Team 2')} className="opacity-0 group-hover:opacity-100 absolute -right-1 md:-right-2 top-0 text-orange-400/50 hover:text-orange-400 transition-opacity p-0.5 bg-orange-900/50 rounded no-print">
-                                <Edit2 className="w-2.5 h-2.5" />
-                              </button>
-                            )}
-                          </>
-                        )}
+                      
+                      <div className="text-gray-600 font-black text-xs uppercase tracking-widest print:text-black print:text-[8px]">VS</div>
+                      
+                      {/* Team 2 */}
+                      <div className="flex-1 bg-orange-950/20 border border-orange-500/20 rounded-lg p-2 flex flex-col justify-center items-center print:bg-transparent print:border-gray-200 print:p-1">
+                        <div className="text-orange-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0">
+                          {editingTeam?.matchId === match.matchId && editingTeam.team === 2 ? (
+                             <div className="flex items-center gap-1 z-10">
+                               <input 
+                                 autoFocus
+                                 value={editingName} 
+                                 onChange={(e) => setEditingName(e.target.value)} 
+                                 onKeyDown={(e) => { if (e.key === 'Enter') saveTeamName(); if (e.key === 'Escape') cancelEdit(); }}
+                                 className="bg-black/80 border border-orange-500/50 rounded px-1 w-16 md:w-20 text-center text-orange-400 focus:outline-none focus:border-orange-400"
+                               />
+                               <button onClick={saveTeamName} className="text-green-400 hover:text-green-300"><Check className="w-3 h-3" /></button>
+                               <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-300"><X className="w-3 h-3" /></button>
+                             </div>
+                          ) : (
+                            <>
+                              <span className="truncate max-w-[100px] print:max-w-full">{match.team2Name || 'Team 2'}</span>
+                              <span className="shrink-0 text-[7px] bg-orange-500/10 text-orange-400 border border-orange-500/20 px-1 py-0.5 rounded tracking-widest print-color-orange print:text-[5px]">ORANGE</span>
+                              {team2Won && <span className="text-[8px] bg-orange-500/20 text-orange-300 px-1 py-0.5 rounded print:text-[6px] print:bg-gray-200 print:text-black">WIN</span>}
+                              {isAdminMode && (
+                                <button onClick={() => handleEditTeamName(match.matchId, 2, match.team2Name || 'Team 2')} className="opacity-0 group-hover:opacity-100 absolute -right-1 md:-right-2 top-0 text-orange-400/50 hover:text-orange-400 transition-opacity p-0.5 bg-orange-900/50 rounded no-print">
+                                  <Edit2 className="w-2.5 h-2.5" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <div className="text-2xl font-black text-white print:text-black print:text-lg">{match.team2Score}</div>
                       </div>
-                      <div className="text-2xl font-black text-white print:text-black print:text-lg">{match.team2Score}</div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-3 flex justify-center items-center gap-3 bg-cyan-950/20 border-b border-white/5 print:bg-transparent print:border-gray-200 print:p-1.5">
+                      <div className="flex flex-col items-center">
+                        <span className="text-cyan-400 font-bold uppercase tracking-widest text-xs print:text-black print:text-[10px]">Survival Mode</span>
+                        {match.waveIndex !== undefined && (
+                          <span className="text-2xl font-black text-white mt-1 print:text-black">Wave {match.waveIndex + 1}</span>
+                        )}
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 print:text-gray-600 print:text-[8px]">Team Score: <span className="text-white font-bold">{match.team1Score}</span></span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Player Stats Tables */}
-                  <div className="px-3 pb-3 grid grid-cols-1 gap-3 flex-1 print:p-1.5 print:gap-2 print:grid-cols-2">
-                    <TeamTable teamName="Team 1" stats={match.playerStats.filter(p => p.team === 1)} color="blue" />
-                    <TeamTable teamName="Team 2" stats={match.playerStats.filter(p => p.team === 2)} color="orange" />
+                  <div className={`px-3 pb-3 grid grid-cols-1 gap-3 flex-1 print:p-1.5 print:gap-2 ${isSurvival ? '' : 'print:grid-cols-2'}`}>
+                    <TeamTable teamName="Team 1" stats={match.playerStats.filter(p => p.team === 1)} color="blue" isSurvival={isSurvival} />
+                    {!isSurvival && (
+                      <TeamTable teamName="Team 2" stats={match.playerStats.filter(p => p.team === 2)} color="orange" />
+                    )}
                   </div>
                 </div>
               );
             })
           )}
+          </div>
         </div>
       </main>
     </div>
   );
 }
 
-function TeamTable({ teamName, stats, color }: { teamName: string, stats: PlayerStat[], color: 'blue' | 'red' | 'orange' }) {
+function TeamTable({ teamName, stats, color, isSurvival }: { teamName: string, stats: PlayerStat[], color: 'blue' | 'red' | 'orange', isSurvival?: boolean }) {
   const sortedStats = [...stats].sort((a, b) => b.score - a.score);
   
   const textColor = color === 'blue' ? 'text-blue-400' : (color === 'red' ? 'text-red-400' : 'text-orange-400');
@@ -628,7 +835,7 @@ function TeamTable({ teamName, stats, color }: { teamName: string, stats: Player
                           {player.playerName}
                         </span>
                         {isMVP && !player.isBot && (
-                          <span className={`shrink-0 text-[7px] px-1 rounded uppercase tracking-wider font-bold print:text-[5px] print:bg-gray-200 print:text-black ${mvpBadge}`}>MVP</span>
+                          <span className={`shrink-0 text-[7px] px-1 rounded uppercase tracking-wider font-bold print:text-[5px] print:bg-gray-200 print:text-black ${mvpBadge}`}>{isSurvival ? 'WINNER' : 'MVP'}</span>
                         )}
                         {player.isBot && (
                           <span className="shrink-0 text-[7px] border border-white/20 text-gray-500 px-1 rounded uppercase font-bold print:border-gray-300 print:text-[5px]">Bot</span>

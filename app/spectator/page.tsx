@@ -1,17 +1,39 @@
 'use client';
 
 import { useMemo } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { PlayerStat } from '@/types/match';
 
-const formatGameMode = (mode?: string) => {
+const formatGameMode = (mode?: string, lifeMode?: string) => {
   if (!mode) return '';
+  let displayMode = mode;
   const lower = mode.toLowerCase();
-  if (lower === 'teamdeathmatch') return 'TEAM DEATHMATCH';
-  if (lower === 'freeforall') return 'FREE FOR ALL';
-  return mode;
+  if (lower === 'teamdeathmatch') displayMode = 'TEAM DEATHMATCH';
+  else if (lower === 'freeforall') displayMode = 'FREE FOR ALL';
+  else displayMode = mode.toUpperCase();
+
+  if (lifeMode && lower === 'survival') {
+    let formattedLifeMode = lifeMode.toUpperCase();
+    if (formattedLifeMode === 'TEAMLIVES') formattedLifeMode = 'TEAM LIVES';
+    if (formattedLifeMode === 'INDIVIDUALLIVES') formattedLifeMode = 'INDIVIDUAL LIVES';
+    
+    return `${displayMode} (${formattedLifeMode})`;
+  }
+
+  return displayMode;
+};
+
+const getMatchDuration = (start?: string, end?: string) => {
+  if (!start || !end) return null;
+  try {
+    const mins = differenceInMinutes(parseISO(end), parseISO(start));
+    if (isNaN(mins) || mins < 0) return null;
+    return `${mins} MIN`;
+  } catch {
+    return null;
+  }
 };
 
 export default function SpectatorPage() {
@@ -101,25 +123,47 @@ export default function SpectatorPage() {
              <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-cyan-400 font-bold text-xs tracking-wider">{format(parseISO(latestMatch.matchStartTimestamp), 'HH:mm')}</span>
-                  <span className="text-[10px] text-gray-400 uppercase tracking-widest">{formatGameMode(latestMatch.gameMode)}</span>
-                </div>
-                
-                <div className="flex justify-between items-center mb-5 bg-white/5 rounded-xl p-3 border border-white/5">
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                     <span className="text-[10px] font-bold text-blue-400 uppercase truncate w-full text-center">{latestMatch.team1Name || 'Team 1'}</span>
-                     <span className="text-3xl font-black text-white mt-1">{latestMatch.team1Score}</span>
-                  </div>
-                  <div className="text-xs font-black text-gray-500 px-3 shrink-0">VS</div>
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                     <span className="text-[10px] font-bold text-orange-400 uppercase truncate w-full text-center">{latestMatch.team2Name || 'Team 2'}</span>
-                     <span className="text-3xl font-black text-white mt-1">{latestMatch.team2Score}</span>
+                  <div className="flex gap-2">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-widest">{formatGameMode(latestMatch.gameMode, latestMatch.lifeMode)}</span>
+                    {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp) && (
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+                        {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp)}
+                      </span>
+                    )}
                   </div>
                 </div>
                 
-                <div className="flex flex-col gap-3">
-                  <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 1)} color="blue" />
-                  <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 2)} color="orange" />
-                </div>
+                {latestMatch.gameMode?.toLowerCase() === 'survival' ? (
+                  <>
+                    <div className="flex justify-center items-center mb-5 bg-cyan-950/20 border border-cyan-500/20 rounded-xl p-3 flex-col">
+                       <span className="text-cyan-400 font-bold uppercase text-[10px] tracking-widest">Survival</span>
+                       {latestMatch.waveIndex !== undefined && <span className="text-3xl font-black text-white mt-1">Wave {latestMatch.waveIndex + 1}</span>}
+                       <span className="text-[10px] text-gray-500 uppercase mt-1">Team Score: <span className="text-white font-bold">{latestMatch.team1Score}</span></span>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 1)} color="blue" isSurvival={true} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center mb-5 bg-white/5 rounded-xl p-3 border border-white/5">
+                      <div className="flex flex-col items-center flex-1 min-w-0">
+                         <span className="text-[10px] font-bold text-blue-400 uppercase truncate w-full text-center">{latestMatch.team1Name || 'Team 1'}</span>
+                         <span className="text-3xl font-black text-white mt-1">{latestMatch.team1Score}</span>
+                      </div>
+                      <div className="text-xs font-black text-gray-500 px-3 shrink-0">VS</div>
+                      <div className="flex flex-col items-center flex-1 min-w-0">
+                         <span className="text-[10px] font-bold text-orange-400 uppercase truncate w-full text-center">{latestMatch.team2Name || 'Team 2'}</span>
+                         <span className="text-3xl font-black text-white mt-1">{latestMatch.team2Score}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-3">
+                      <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 1)} color="blue" />
+                      <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 2)} color="orange" />
+                    </div>
+                  </>
+                )}
              </div>
           </div>
         )}
@@ -133,20 +177,30 @@ export default function SpectatorPage() {
              
              <div className="p-3 overflow-y-auto flex-1 space-y-2 no-scrollbar">
                {previousMatches.map(match => {
+                  const isSurvival = match.gameMode?.toLowerCase() === 'survival';
                   const t1Won = match.team1Score > match.team2Score;
                   const t2Won = match.team2Score > match.team1Score;
                   return (
                     <div key={match.matchId} className="bg-white/5 rounded-lg border border-white/5 flex flex-col p-2 text-[11px]">
                       <div className="flex justify-between items-center border-b border-white/5 pb-1 mb-1.5">
                          <span className="text-gray-400 text-[10px] font-bold">{format(parseISO(match.matchStartTimestamp), 'HH:mm')}</span>
+                         {isSurvival && <span className="text-cyan-500 text-[9px] uppercase tracking-widest">Survival</span>}
                       </div>
-                      <div className="flex justify-between items-center px-1">
-                         <span className={`truncate w-24 ${t1Won ? 'text-blue-400 font-bold' : 'text-gray-400'}`}>{match.team1Name || 'Team 1'}</span>
-                         <span className={`font-black text-sm ${t1Won ? 'text-white' : 'text-gray-400'}`}>{match.team1Score}</span>
-                         <span className="text-gray-700 mx-2 text-[10px]">-</span>
-                         <span className={`font-black text-sm ${t2Won ? 'text-white' : 'text-gray-400'}`}>{match.team2Score}</span>
-                         <span className={`truncate w-24 text-right ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-400'}`}>{match.team2Name || 'Team 2'}</span>
-                      </div>
+                      {!isSurvival ? (
+                        <div className="flex justify-between items-center px-1">
+                           <span className={`truncate w-24 ${t1Won ? 'text-blue-400 font-bold' : 'text-gray-400'}`}>{match.team1Name || 'Team 1'}</span>
+                           <span className={`font-black text-sm ${t1Won ? 'text-white' : 'text-gray-400'}`}>{match.team1Score}</span>
+                           <span className="text-gray-700 mx-2 text-[10px]">-</span>
+                           <span className={`font-black text-sm ${t2Won ? 'text-white' : 'text-gray-400'}`}>{match.team2Score}</span>
+                           <span className={`truncate w-24 text-right ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-400'}`}>{match.team2Name || 'Team 2'}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-center items-center px-1 gap-2">
+                           <span className="text-gray-400 uppercase tracking-widest text-[9px]">Score:</span>
+                           <span className="font-black text-sm text-white">{match.team1Score}</span>
+                           {match.waveIndex !== undefined && <span className="text-gray-500 text-[9px] ml-2 uppercase">(Wave {match.waveIndex + 1})</span>}
+                        </div>
+                      )}
                     </div>
                   );
                })}
@@ -159,7 +213,7 @@ export default function SpectatorPage() {
   );
 }
 
-function MiniTeamTable({ stats, color }: { stats: PlayerStat[], color: 'blue' | 'orange' }) {
+function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], color: 'blue' | 'orange', isSurvival?: boolean }) {
   const sortedStats = [...stats].sort((a, b) => b.score - a.score);
   const textColor = color === 'blue' ? 'text-blue-400' : 'text-orange-400';
 
