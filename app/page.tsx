@@ -660,6 +660,7 @@ export default function Home() {
               const team1Won = match.team1Score > match.team2Score;
               const team2Won = match.team2Score > match.team1Score;
               const duration = getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp);
+              const isSurvival = match.gameMode?.toLowerCase() === 'survival';
 
               return (
                 <div 
