@@ -6,23 +6,22 @@ import { Trophy, Crosshair } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { PlayerStat, MatchData } from '@/types/match';
 
-const formatGameMode = (mode?: string, lifeMode?: string) => {
+const formatGameMode = (mode?: string) => {
   if (!mode) return '';
   let displayMode = mode;
   const lower = mode.toLowerCase();
   if (lower === 'teamdeathmatch') displayMode = 'TEAM DEATHMATCH';
   else if (lower === 'freeforall') displayMode = 'FREE FOR ALL';
   else displayMode = mode.toUpperCase();
-
-  if (lifeMode && lower === 'survival') {
-    let formattedLifeMode = lifeMode.toUpperCase();
-    if (formattedLifeMode === 'TEAMLIVES') formattedLifeMode = 'TEAM LIVES';
-    if (formattedLifeMode === 'INDIVIDUALLIVES') formattedLifeMode = 'INDIVIDUAL LIVES';
-    
-    return `${displayMode} (${formattedLifeMode})`;
-  }
-
   return displayMode;
+};
+
+const formatLifeMode = (lifeMode?: string) => {
+  if (!lifeMode) return '';
+  let formattedLifeMode = lifeMode.toUpperCase();
+  if (formattedLifeMode === 'TEAMLIVES') formattedLifeMode = 'TEAM LIVES';
+  if (formattedLifeMode === 'INDIVIDUALLIVES') formattedLifeMode = 'INDIVIDUAL LIVES';
+  return formattedLifeMode;
 };
 
 const getMatchDuration = (start?: string, end?: string) => {
@@ -232,8 +231,13 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
           </span>
           <div className="flex gap-2">
             <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-300 uppercase tracking-widest">
-              {formatGameMode(match.gameMode, match.lifeMode)}
+              {formatGameMode(match.gameMode)}
             </span>
+            {match.gameMode?.toLowerCase() === 'survival' && match.lifeMode && (
+              <span className="px-2 py-0.5 rounded bg-cyan-900/30 border border-cyan-500/20 text-[10px] text-cyan-300 uppercase tracking-widest">
+                {formatLifeMode(match.lifeMode)}
+              </span>
+            )}
             {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp) && (
               <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-400 uppercase tracking-widest">
                 {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}
@@ -287,8 +291,13 @@ function SurvivalCard({ match }: { match: MatchData }) {
           </span>
           <div className="flex gap-2">
             <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-300 uppercase tracking-widest">
-              {formatGameMode(match.gameMode, match.lifeMode)}
+              {formatGameMode(match.gameMode)}
             </span>
+            {match.gameMode?.toLowerCase() === 'survival' && match.lifeMode && (
+              <span className="px-2 py-0.5 rounded bg-cyan-900/30 border border-cyan-500/20 text-[10px] text-cyan-300 uppercase tracking-widest">
+                {formatLifeMode(match.lifeMode)}
+              </span>
+            )}
             {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp) && (
               <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-400 uppercase tracking-widest">
                 {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}
