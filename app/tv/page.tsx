@@ -154,25 +154,25 @@ export default function TVPage() {
                 <>
                   <div className="p-4 flex justify-between items-center gap-4 shrink-0">
                     {/* Team 1 (Blue) */}
-                    <div className="flex-1 bg-blue-950/20 border border-blue-500/20 rounded-lg p-3 flex flex-col items-center relative overflow-hidden">
-                      <div className="text-blue-400 font-bold uppercase text-xs flex items-center justify-center gap-1.5 z-10 w-full truncate">
-                        <span className="truncate">{match.team1Name || 'Team 1'}</span>
-                        <span className="shrink-0 text-[8px] bg-blue-500/10 border border-blue-500/20 px-1 py-0.5 rounded">BLUE</span>
-                        {team1Won && <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">WIN</span>}
+                    <div className={`flex-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'} rounded-lg p-3 flex flex-col items-center relative overflow-hidden transition-all`}>
+                      {team1Won && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-lg shadow-md tracking-widest uppercase">Winner</div>}
+                      <div className="text-blue-400 font-bold uppercase text-xs flex items-center justify-center gap-1.5 z-10 w-full truncate mt-1">
+                        <span className={`truncate ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
+                        <span className="shrink-0 text-[8px] bg-blue-500/20 border border-blue-500/30 px-1 py-0.5 rounded text-blue-300">BLUE</span>
                       </div>
-                      <div className="text-5xl font-black text-white mt-2 z-10">{match.team1Score}</div>
+                      <div className={`text-5xl font-black mt-2 z-10 ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score}</div>
                     </div>
                     
                     <div className="text-gray-600 font-black text-sm uppercase tracking-widest">VS</div>
                     
                     {/* Team 2 (Orange) */}
-                    <div className="flex-1 bg-orange-950/20 border border-orange-500/20 rounded-lg p-3 flex flex-col items-center relative overflow-hidden">
-                      <div className="text-orange-400 font-bold uppercase text-xs flex items-center justify-center gap-1.5 z-10 w-full truncate">
-                        <span className="truncate">{match.team2Name || 'Team 2'}</span>
-                        <span className="shrink-0 text-[8px] bg-orange-500/10 border border-orange-500/20 px-1 py-0.5 rounded">ORANGE</span>
-                        {team2Won && <span className="text-[9px] bg-orange-500/20 text-orange-300 px-1.5 py-0.5 rounded">WIN</span>}
+                    <div className={`flex-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'} rounded-lg p-3 flex flex-col items-center relative overflow-hidden transition-all`}>
+                      {team2Won && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-lg shadow-md tracking-widest uppercase">Winner</div>}
+                      <div className="text-orange-400 font-bold uppercase text-xs flex items-center justify-center gap-1.5 z-10 w-full truncate mt-1">
+                        <span className={`truncate ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Team 2'}</span>
+                        <span className="shrink-0 text-[8px] bg-orange-500/20 border border-orange-500/30 px-1 py-0.5 rounded text-orange-300">ORANGE</span>
                       </div>
-                      <div className="text-5xl font-black text-white mt-2 z-10">{match.team2Score}</div>
+                      <div className={`text-5xl font-black mt-2 z-10 ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score}</div>
                     </div>
                   </div>
 
