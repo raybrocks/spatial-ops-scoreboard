@@ -520,7 +520,7 @@ export default function Home() {
             <div className="mb-8 border-b border-white/5 pb-8 print:border-none print:pb-0">
               <h2 className="text-sm font-bold tracking-widest uppercase text-yellow-500 mb-4 flex items-center gap-2 print:text-black">
                 <Trophy className="w-4 h-4 print:hidden" />
-                TDM & PVP Summary: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
+                TEAM DEATHMATCH & PVP SUMMARY: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
               </h2>
               
               {/* TDM Team Stats */}
