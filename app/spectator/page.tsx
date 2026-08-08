@@ -146,15 +146,17 @@ export default function SpectatorPage() {
                   </>
                 ) : (
                   <>
-                    <div className="flex justify-between items-center mb-5 bg-white/5 rounded-xl p-3 border border-white/5">
-                      <div className="flex flex-col items-center flex-1 min-w-0">
-                         <span className="text-[10px] font-bold text-blue-400 uppercase truncate w-full text-center">{latestMatch.team1Name || 'Team 1'}</span>
-                         <span className="text-3xl font-black text-white mt-1">{latestMatch.team1Score}</span>
+                    <div className="flex justify-between items-center mb-5 gap-2">
+                      <div className={`flex flex-col items-center flex-1 min-w-0 rounded-lg p-2 relative overflow-hidden transition-all ${latestMatch.team1Score > latestMatch.team2Score ? 'bg-blue-900/40 border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-blue-950/20 border border-blue-500/10 opacity-70'}`}>
+                         {latestMatch.team1Score > latestMatch.team2Score && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">Win</div>}
+                         <span className={`text-[10px] font-bold uppercase truncate w-full text-center ${latestMatch.team1Score > latestMatch.team2Score ? 'text-white' : 'text-blue-400'}`}>{latestMatch.team1Name || 'Team 1'}</span>
+                         <span className={`text-3xl font-black mt-1 z-10 ${latestMatch.team1Score > latestMatch.team2Score ? 'text-white' : 'text-blue-200/50'}`}>{latestMatch.team1Score}</span>
                       </div>
-                      <div className="text-xs font-black text-gray-500 px-3 shrink-0">VS</div>
-                      <div className="flex flex-col items-center flex-1 min-w-0">
-                         <span className="text-[10px] font-bold text-orange-400 uppercase truncate w-full text-center">{latestMatch.team2Name || 'Team 2'}</span>
-                         <span className="text-3xl font-black text-white mt-1">{latestMatch.team2Score}</span>
+                      <div className="text-[10px] font-black text-gray-500 shrink-0">VS</div>
+                      <div className={`flex flex-col items-center flex-1 min-w-0 rounded-lg p-2 relative overflow-hidden transition-all ${latestMatch.team2Score > latestMatch.team1Score ? 'bg-orange-900/40 border-2 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'bg-orange-950/20 border border-orange-500/10 opacity-70'}`}>
+                         {latestMatch.team2Score > latestMatch.team1Score && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">Win</div>}
+                         <span className={`text-[10px] font-bold uppercase truncate w-full text-center ${latestMatch.team2Score > latestMatch.team1Score ? 'text-white' : 'text-orange-400'}`}>{latestMatch.team2Name || 'Team 2'}</span>
+                         <span className={`text-3xl font-black mt-1 z-10 ${latestMatch.team2Score > latestMatch.team1Score ? 'text-white' : 'text-orange-200/50'}`}>{latestMatch.team2Score}</span>
                       </div>
                     </div>
                     

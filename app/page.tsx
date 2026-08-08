@@ -707,8 +707,9 @@ export default function Home() {
                   {!isSurvival ? (
                     <div className="p-3 flex justify-between items-center gap-3 print:p-1.5 print:gap-1">
                       {/* Team 1 */}
-                      <div className="flex-1 bg-blue-950/20 border border-blue-500/20 rounded-lg p-2 flex flex-col justify-center items-center print:bg-transparent print:border-gray-200 print:p-1">
-                        <div className="text-blue-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0">
+                      <div className={`flex-1 rounded-lg p-2 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'}`}>
+                        {team1Won && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden">Winner</div>}
+                        <div className="text-blue-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
                           {editingTeam?.matchId === match.matchId && editingTeam.team === 1 ? (
                              <div className="flex items-center gap-1 z-10">
                                <input 
@@ -723,9 +724,9 @@ export default function Home() {
                              </div>
                           ) : (
                             <>
-                              <span className="truncate max-w-[100px] print:max-w-full">{match.team1Name || 'Team 1'}</span>
-                              <span className="shrink-0 text-[7px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1 py-0.5 rounded tracking-widest print-color-blue print:text-[5px]">BLUE</span>
-                              {team1Won && <span className="text-[8px] bg-blue-500/20 text-blue-300 px-1 py-0.5 rounded print:text-[6px] print:bg-gray-200 print:text-black">WIN</span>}
+                              <span className={`truncate max-w-[100px] print:max-w-full ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
+                              <span className="shrink-0 text-[7px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1 py-0.5 rounded tracking-widest print-color-blue print:text-[5px]">BLUE</span>
+                              {team1Won && <span className="hidden print:inline-block text-[6px] print:bg-gray-200 print:text-black px-1 py-0.5 rounded">WIN</span>}
                               {isAdminMode && (
                                 <button onClick={() => handleEditTeamName(match.matchId, 1, match.team1Name || 'Team 1')} className="opacity-0 group-hover:opacity-100 absolute -right-1 md:-right-2 top-0 text-blue-400/50 hover:text-blue-400 transition-opacity p-0.5 bg-blue-900/50 rounded no-print">
                                   <Edit2 className="w-2.5 h-2.5" />
@@ -734,14 +735,15 @@ export default function Home() {
                             </>
                           )}
                         </div>
-                        <div className="text-2xl font-black text-white print:text-black print:text-lg">{match.team1Score}</div>
+                        <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score}</div>
                       </div>
                       
                       <div className="text-gray-600 font-black text-xs uppercase tracking-widest print:text-black print:text-[8px]">VS</div>
                       
                       {/* Team 2 */}
-                      <div className="flex-1 bg-orange-950/20 border border-orange-500/20 rounded-lg p-2 flex flex-col justify-center items-center print:bg-transparent print:border-gray-200 print:p-1">
-                        <div className="text-orange-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0">
+                      <div className={`flex-1 rounded-lg p-2 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'}`}>
+                        {team2Won && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden">Winner</div>}
+                        <div className="text-orange-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
                           {editingTeam?.matchId === match.matchId && editingTeam.team === 2 ? (
                              <div className="flex items-center gap-1 z-10">
                                <input 
@@ -756,9 +758,9 @@ export default function Home() {
                              </div>
                           ) : (
                             <>
-                              <span className="truncate max-w-[100px] print:max-w-full">{match.team2Name || 'Team 2'}</span>
-                              <span className="shrink-0 text-[7px] bg-orange-500/10 text-orange-400 border border-orange-500/20 px-1 py-0.5 rounded tracking-widest print-color-orange print:text-[5px]">ORANGE</span>
-                              {team2Won && <span className="text-[8px] bg-orange-500/20 text-orange-300 px-1 py-0.5 rounded print:text-[6px] print:bg-gray-200 print:text-black">WIN</span>}
+                              <span className={`truncate max-w-[100px] print:max-w-full ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Team 2'}</span>
+                              <span className="shrink-0 text-[7px] bg-orange-500/20 text-orange-300 border border-orange-500/30 px-1 py-0.5 rounded tracking-widest print-color-orange print:text-[5px]">ORANGE</span>
+                              {team2Won && <span className="hidden print:inline-block text-[6px] print:bg-gray-200 print:text-black px-1 py-0.5 rounded">WIN</span>}
                               {isAdminMode && (
                                 <button onClick={() => handleEditTeamName(match.matchId, 2, match.team2Name || 'Team 2')} className="opacity-0 group-hover:opacity-100 absolute -right-1 md:-right-2 top-0 text-orange-400/50 hover:text-orange-400 transition-opacity p-0.5 bg-orange-900/50 rounded no-print">
                                   <Edit2 className="w-2.5 h-2.5" />
@@ -767,7 +769,7 @@ export default function Home() {
                             </>
                           )}
                         </div>
-                        <div className="text-2xl font-black text-white print:text-black print:text-lg">{match.team2Score}</div>
+                        <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score}</div>
                       </div>
                     </div>
                   ) : (
