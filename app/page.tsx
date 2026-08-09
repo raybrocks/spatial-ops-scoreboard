@@ -525,7 +525,7 @@ export default function Home() {
               {/* TDM Team Stats */}
               {tdmDailySummary.length > 0 && (
                 <div className="mb-6 print-section">
-                  <h2 className="text-xs font-bold tracking-widest uppercase text-gray-500 mb-3 print:text-black">Team Leaderboard</h2>
+                  <h2 className="text-sm font-bold tracking-widest uppercase text-gray-200 mb-4 print:text-black">Team Leaderboard</h2>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
                     {tdmDailySummary.map((team, idx) => (
                       <div key={team.name} className={`bg-[#121212] border ${idx === 0 ? 'border-yellow-500/50 bg-yellow-950/20' : 'border-white/10'} rounded-lg p-3 print:bg-transparent print:border-gray-300 print:p-2`}>
@@ -545,7 +545,7 @@ export default function Home() {
               {/* TDM Player Leaderboard */}
               {tdmPlayerSummary.length > 0 && (
                 <div className="print-section">
-                  <h2 className="text-xs font-bold tracking-widest uppercase text-gray-500 mb-3 print:text-black">Player Leaderboard</h2>
+                  <h2 className="text-sm font-bold tracking-widest uppercase text-gray-200 mb-4 print:text-black">Player Leaderboard</h2>
                   <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse min-w-[500px]">
