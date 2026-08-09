@@ -528,9 +528,10 @@ export default function Home() {
                   <h2 className="text-sm font-bold tracking-widest uppercase text-gray-200 mb-4 print:text-black">Team Leaderboard</h2>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
                     {tdmDailySummary.map((team, idx) => (
-                      <div key={team.name} className={`bg-[#121212] border ${idx === 0 ? 'border-yellow-500/50 bg-yellow-950/20' : 'border-white/10'} rounded-lg p-3 print:bg-transparent print:border-gray-300 print:p-2`}>
-                        <div className="text-xs text-gray-500 uppercase tracking-widest font-bold print:text-black print:text-[8px] truncate">
-                          {team.name} {idx === 0 && <span className="ml-1 text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print:bg-gray-200 print:text-black">1ST</span>}
+                      <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-3 print:bg-transparent print:border-gray-300 print:p-2 transition-all flex flex-col`}>
+                        {idx === 0 && <div className="absolute top-0 right-0 bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden z-10">Winner</div>}
+                        <div className="text-xs text-gray-500 uppercase tracking-widest font-bold print:text-black print:text-[8px] truncate mt-1">
+                          <span className={idx === 0 ? 'text-white' : ''}>{team.name}</span>
                         </div>
                         <div className="text-2xl font-black text-white mt-1 print:text-black print:text-lg">{team.totalScore}</div>
                         <div className="text-[10px] text-gray-400 mt-1 print:text-black print:text-[8px]">
