@@ -575,7 +575,7 @@ export default function Home() {
                               <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
                                 <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
                                 <span className={`truncate ${idx === 0 ? 'text-yellow-500 font-bold' : ''}`}>{player.name}</span>
-                                {idx === 0 && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print-color-orange">1ST</span>}
+                                {idx === 0 && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print:bg-gray-200 print:text-black">1ST</span>}
                               </td>
                               <td className="py-2 px-2 text-gray-500 text-[9px] uppercase tracking-widest truncate print:text-gray-600 print:py-1 print:px-1">{player.teamName}</td>
                               <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
@@ -598,13 +598,15 @@ export default function Home() {
           {/* SURVIVAL SUMMARY */}
           {survivalMatches.length > 0 && (
             <div className="mb-8 print-section">
-              <h2 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-4 flex items-center gap-2 print:text-black">
-                <Crosshair className="w-4 h-4 print:hidden" />
-                Survival Summary: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
-              </h2>
+              <h1 className="text-2xl font-black tracking-widest uppercase text-cyan-400 mb-6 flex items-center gap-3 print:text-black">
+                <Crosshair className="w-6 h-6 print:hidden" />
+                SURVIVAL MODE: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
+              </h1>
 
               {survivalTeamSummary.length > 0 && (
-                <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
+                <div className="print-section">
+                  <h2 className="text-sm font-bold tracking-widest uppercase text-gray-200 mb-4 print:text-black">Team Leaderboard</h2>
+                  <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[500px]">
                       <thead className="bg-[#1A1A1A] print:bg-gray-100">
@@ -616,18 +618,23 @@ export default function Home() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
-                        {survivalTeamSummary.slice(0, 10).map((match, idx) => (
+                        {survivalTeamSummary.slice(0, 10).map((match, idx) => {
+                          const placement = idx + 1;
+                          const suffix = placement === 1 ? 'ST' : placement === 2 ? 'ND' : placement === 3 ? 'RD' : 'TH';
+                          return (
                           <tr key={match.matchId} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#0f1b21]' : 'bg-[#121212]'}`}>
                             <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
                               <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
                               <span className={`truncate ${idx === 0 ? 'text-cyan-400 font-bold' : ''}`}>{match.team1Name || 'Unknown Team'}</span>
-                              {idx === 0 && <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1 py-0.5 rounded">HIGH SCORE</span>}
+                              <span className={`text-[8px] px-1 py-0.5 rounded print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-cyan-500/20 text-cyan-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                {placement}{suffix}
+                              </span>
                             </td>
                             <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{match.waveIndex !== undefined ? match.waveIndex + 1 : '-'}</td>
                             <td className="py-2 px-2 font-mono text-center font-bold text-cyan-400 print:py-1 print:px-1 print:text-black">{match.team1Score}</td>
                             <td className="py-2 px-2 font-mono text-center text-gray-500 print:py-1 print:px-1 print:text-black">{format(parseISO(match.matchStartTimestamp), 'dd.MM HH:mm')}</td>
                           </tr>
-                        ))}
+                        )})}
                       </tbody>
                     </table>
                   </div>
@@ -840,7 +847,7 @@ function TeamTable({ teamName, stats, color, isSurvival }: { teamName: string, s
               </tr>
             ) : (
               sortedStats.map((player, idx) => {
-                const isMVP = idx === 0 && player.score > 0;
+                const isMVP = !isSurvival && idx === 0 && player.score > 0;
                 return (
                   <tr key={idx} className={`hover:bg-white/[0.02] print:bg-transparent ${isMVP && !player.isBot ? rowHighlight : player.isBot ? 'opacity-70 italic' : ''}`}>
                     <td className="py-1.5 px-2 font-medium text-gray-300 print:text-black print:py-0.5 print:px-1 truncate">
@@ -849,7 +856,7 @@ function TeamTable({ teamName, stats, color, isSurvival }: { teamName: string, s
                           {player.playerName}
                         </span>
                         {isMVP && !player.isBot && (
-                          <span className={`shrink-0 text-[7px] px-1 rounded uppercase tracking-wider font-bold print:text-[5px] print:bg-gray-200 print:text-black ${mvpBadge}`}>{isSurvival ? 'WINNER' : 'MVP'}</span>
+                          <span className={`shrink-0 text-[7px] px-1 rounded uppercase tracking-wider font-bold print:text-[5px] print:bg-gray-200 print:text-black ${mvpBadge}`}>MVP</span>
                         )}
                         {player.isBot && (
                           <span className="shrink-0 text-[7px] border border-white/20 text-gray-500 px-1 rounded uppercase font-bold print:border-gray-300 print:text-[5px]">Bot</span>
