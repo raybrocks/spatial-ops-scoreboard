@@ -36,7 +36,7 @@ const getMatchDuration = (start?: string, end?: string) => {
 };
 
 export default function Home() {
-  const { matches, addMatch, removeMatch, updateMatch, isLoaded, clearAllMatches } = useMatchData();
+  const { matches, addMatch, removeMatch, updateMatch, isLoaded } = useMatchData();
   const [uploadError, setUploadError] = useState('');
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [isPrintMode, setIsPrintMode] = useState(false);
@@ -631,14 +631,7 @@ export default function Home() {
         {sortedMatches.length > 0 && (
           <div className="mb-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/10 pb-4 no-print mt-12">
             <h2 className="text-sm uppercase tracking-widest font-bold text-cyan-400">Match Details</h2>
-              <div className="flex flex-col gap-4">
-                <button
-                  onClick={clearAllMatches}
-                  className="bg-red-900/20 hover:bg-red-600/30 text-red-500 border border-red-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors w-full sm:w-auto"
-                >
-                  Clear All Matches
-                </button>
-              </div>
+
             <button
               onClick={() => setShowMatchDetails(!showMatchDetails)}
               className="bg-cyan-600/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors shadow-lg shadow-cyan-900/20"
