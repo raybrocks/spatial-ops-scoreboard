@@ -319,33 +319,6 @@ export default function Home() {
       return b.team1Score - a.team1Score;
     });
   }, [survivalMatches]);
-  
-  const migrateSurvivalTeams = async () => {
-    if (!window.confirm("Are you sure you want to update all existing Survival matches with new generated Team names?")) return;
-    
-    let updatedCount = 0;
-    for (const match of matches) {
-      if (match.gameMode?.toLowerCase() === 'survival' && match.playerStats) {
-        const humanPlayers = match.playerStats
-          .filter(p => p.team === 1 && !p.isBot)
-          .map(p => p.playerName)
-          .sort();
-          
-        if (humanPlayers.length > 0) {
-          const newTeamName = humanPlayers.join('+');
-          if (match.team1Name !== newTeamName) {
-            try {
-              await updateMatch(match.matchId, { team1Name: newTeamName });
-              updatedCount++;
-            } catch (err) {
-              console.error("Failed to migrate match", match.matchId, err);
-            }
-          }
-        }
-      }
-    }
-    alert(`Migration complete. Updated ${updatedCount} matches.`);
-  };
 
   if (!isLoaded) return <div className="p-8 text-center">Loading...</div>;
 
@@ -664,12 +637,6 @@ export default function Home() {
                   className="bg-red-900/20 hover:bg-red-600/30 text-red-500 border border-red-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors w-full sm:w-auto"
                 >
                   Clear All Matches
-                </button>
-                <button
-                  onClick={migrateSurvivalTeams}
-                  className="bg-cyan-900/20 hover:bg-cyan-600/30 text-cyan-500 border border-cyan-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors w-full sm:w-auto"
-                >
-                  Migrate Survival Teams
                 </button>
               </div>
             <button
