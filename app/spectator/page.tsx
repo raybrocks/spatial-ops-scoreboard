@@ -226,7 +226,7 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
       <table className="w-full text-left table-fixed">
         <tbody className="divide-y divide-white/5 text-[10px]">
           {sortedStats.slice(0, 3).map((player, idx) => {
-            const isMVP = idx === 0 && player.score > 0;
+            const isMVP = !isSurvival && idx === 0 && player.score > 0;
             return (
               <tr key={idx} className={player.isBot ? 'opacity-70 italic' : ''}>
                 <td className="py-1.5 px-2 font-medium text-gray-300 truncate w-[65%]">

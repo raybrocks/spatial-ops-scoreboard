@@ -36,7 +36,7 @@ const getMatchDuration = (start?: string, end?: string) => {
 };
 
 export default function Home() {
-  const { matches, addMatch, removeMatch, updateMatch, isLoaded } = useMatchData();
+  const { matches, addMatch, removeMatch, updateMatch, isLoaded, clearAllMatches } = useMatchData();
   const [uploadError, setUploadError] = useState('');
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [isPrintMode, setIsPrintMode] = useState(false);
@@ -115,6 +115,16 @@ export default function Home() {
         throw new Error('Invalid Match Data format received.');
       }
 
+      if (parsedData.gameMode?.toLowerCase() === 'survival' && parsedData.playerStats) {
+        const humanPlayers = parsedData.playerStats
+          .filter(p => p.team === 1 && !p.isBot)
+          .map(p => p.playerName)
+          .sort();
+        if (humanPlayers.length > 0) {
+          parsedData.team1Name = humanPlayers.join('+');
+        }
+      }
+
       if (isDuplicateMatch(parsedData)) {
         setFetchStatus('success');
         setFetchMessage(`Checked at ${format(new Date(), 'HH:mm:ss')} - Latest match already in database.`);
@@ -160,6 +170,17 @@ export default function Home() {
         if (isDuplicateMatch(parsedData)) {
           throw new Error('Duplicate match. A match with this timestamp already exists.');
         }
+        
+        if (parsedData.gameMode?.toLowerCase() === 'survival' && parsedData.playerStats) {
+          const humanPlayers = parsedData.playerStats
+            .filter(p => p.team === 1 && !p.isBot)
+            .map(p => p.playerName)
+            .sort();
+          if (humanPlayers.length > 0) {
+            parsedData.team1Name = humanPlayers.join('+');
+          }
+        }
+        
         addMatch(parsedData);
       } catch (err: any) {
         setUploadError(err.message || 'Failed to parse uploaded JSON file.');
@@ -290,35 +311,41 @@ export default function Home() {
       .sort((a, b) => b.score - a.score);
   }, [tdmMatches]);
 
-  const survivalPlayerSummary = useMemo(() => {
-    const summary: Record<string, { score: number, kills: number, deaths: number, matches: number, wins: number }> = {};
-    
-    survivalMatches.forEach(match => {
-      const t1Stats = match.playerStats.filter(p => p.team === 1 && !p.isBot).sort((a, b) => b.score - a.score);
-      const winner = t1Stats.length > 0 && t1Stats[0].score > 0 ? t1Stats[0].playerName : null;
-
-      match.playerStats.forEach(player => {
-        if (player.team !== 1 || player.isBot) return; // Only team 1 players for Survival
-        
-        if (!summary[player.playerName]) {
-          summary[player.playerName] = { score: 0, kills: 0, deaths: 0, matches: 0, wins: 0 };
-        }
-
-        summary[player.playerName].score += player.score;
-        summary[player.playerName].kills += player.kills;
-        summary[player.playerName].deaths += player.deaths || 0;
-        summary[player.playerName].matches += 1;
-        
-        if (player.playerName === winner) {
-          summary[player.playerName].wins += 1;
-        }
-      });
+  const survivalTeamSummary = useMemo(() => {
+    return [...survivalMatches].sort((a, b) => {
+      const waveA = a.waveIndex ?? 0;
+      const waveB = b.waveIndex ?? 0;
+      if (waveB !== waveA) return waveB - waveA;
+      return b.team1Score - a.team1Score;
     });
-
-    return Object.entries(summary)
-      .map(([name, stats]) => ({ name, ...stats }))
-      .sort((a, b) => b.score - a.score);
   }, [survivalMatches]);
+  
+  const migrateSurvivalTeams = async () => {
+    if (!window.confirm("Are you sure you want to update all existing Survival matches with new generated Team names?")) return;
+    
+    let updatedCount = 0;
+    for (const match of matches) {
+      if (match.gameMode?.toLowerCase() === 'survival' && match.playerStats) {
+        const humanPlayers = match.playerStats
+          .filter(p => p.team === 1 && !p.isBot)
+          .map(p => p.playerName)
+          .sort();
+          
+        if (humanPlayers.length > 0) {
+          const newTeamName = humanPlayers.join('+');
+          if (match.team1Name !== newTeamName) {
+            try {
+              await updateMatch(match.matchId, { team1Name: newTeamName });
+              updatedCount++;
+            } catch (err) {
+              console.error("Failed to migrate match", match.matchId, err);
+            }
+          }
+        }
+      }
+    }
+    alert(`Migration complete. Updated ${updatedCount} matches.`);
+  };
 
   if (!isLoaded) return <div className="p-8 text-center">Loading...</div>;
 
@@ -593,33 +620,29 @@ export default function Home() {
                 Survival Summary: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
               </h2>
 
-              {survivalPlayerSummary.length > 0 && (
+              {survivalTeamSummary.length > 0 && (
                 <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[500px]">
                       <thead className="bg-[#1A1A1A] print:bg-gray-100">
                         <tr className="text-[10px] uppercase tracking-widest text-gray-500 print:text-black print:text-[8px]">
-                          <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#1A1A1A] z-10 print:static print:bg-transparent">Player</th>
-                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Score</th>
-                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Kills</th>
-                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Deaths</th>
-                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Matches</th>
-                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Wins</th>
+                          <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#1A1A1A] z-10 print:static print:bg-transparent">Team</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Wave Reached</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Team Score</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[80px] print:py-1 print:px-1">Time</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
-                        {survivalPlayerSummary.map((player, idx) => (
-                          <tr key={player.name} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#0f1b21]' : 'bg-[#121212]'}`}>
+                        {survivalTeamSummary.slice(0, 10).map((match, idx) => (
+                          <tr key={match.matchId} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#0f1b21]' : 'bg-[#121212]'}`}>
                             <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
                               <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
-                              <span className={`truncate ${idx === 0 ? 'text-cyan-400 font-bold' : ''}`}>{player.name}</span>
-                              {idx === 0 && <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1 py-0.5 rounded">1ST</span>}
+                              <span className={`truncate ${idx === 0 ? 'text-cyan-400 font-bold' : ''}`}>{match.team1Name || 'Unknown Team'}</span>
+                              {idx === 0 && <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1 py-0.5 rounded">HIGH SCORE</span>}
                             </td>
-                            <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
-                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.kills}</td>
-                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.deaths}</td>
-                            <td className="py-2 px-2 text-center text-gray-500 print:py-1 print:px-1 print:text-black">{player.matches}</td>
-                            <td className="py-2 px-2 text-center text-cyan-600/70 print:py-1 print:px-1 print:text-black">{player.wins > 0 ? player.wins : '-'}</td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{match.waveIndex !== undefined ? match.waveIndex + 1 : '-'}</td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-cyan-400 print:py-1 print:px-1 print:text-black">{match.team1Score}</td>
+                            <td className="py-2 px-2 font-mono text-center text-gray-500 print:py-1 print:px-1 print:text-black">{format(parseISO(match.matchStartTimestamp), 'dd.MM HH:mm')}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -635,6 +658,20 @@ export default function Home() {
         {sortedMatches.length > 0 && (
           <div className="mb-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/10 pb-4 no-print mt-12">
             <h2 className="text-sm uppercase tracking-widest font-bold text-cyan-400">Match Details</h2>
+              <div className="flex flex-col gap-4">
+                <button
+                  onClick={clearAllMatches}
+                  className="bg-red-900/20 hover:bg-red-600/30 text-red-500 border border-red-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors w-full sm:w-auto"
+                >
+                  Clear All Matches
+                </button>
+                <button
+                  onClick={migrateSurvivalTeams}
+                  className="bg-cyan-900/20 hover:bg-cyan-600/30 text-cyan-500 border border-cyan-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors w-full sm:w-auto"
+                >
+                  Migrate Survival Teams
+                </button>
+              </div>
             <button
               onClick={() => setShowMatchDetails(!showMatchDetails)}
               className="bg-cyan-600/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors shadow-lg shadow-cyan-900/20"

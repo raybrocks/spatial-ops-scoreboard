@@ -67,16 +67,14 @@ export default function TVPage() {
     return () => clearInterval(interval);
   }, [matches]);
 
-  const todayDate = useMemo(() => {
-    return format(new Date(), 'yyyy-MM-dd');
-  }, []);
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const sortedMatches = useMemo(() => {
     let filtered = [...matches].filter(m => m.matchStartTimestamp);
-    filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === todayDate);
+    filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === selectedDate);
     // Sort NEWEST FIRST for TV display so latest are at the top
     return filtered.sort((a, b) => new Date(b.matchStartTimestamp).getTime() - new Date(a.matchStartTimestamp).getTime());
-  }, [matches, todayDate]);
+  }, [matches, selectedDate]);
 
   const { teamDeathmatchMatches, survivalMatches } = useMemo(() => {
     const tdm: MatchData[] = [];
@@ -117,34 +115,13 @@ export default function TVPage() {
       .sort((a, b) => b.totalScore - a.totalScore);
   }, [teamDeathmatchMatches]);
 
-  const survivalPlayerSummary = useMemo(() => {
-    const summary: Record<string, { score: number, kills: number, deaths: number, matches: number, wins: number }> = {};
-    
-    survivalMatches.forEach(match => {
-      const t1Stats = match.playerStats.filter(p => p.team === 1 && !p.isBot).sort((a, b) => b.score - a.score);
-      const winner = t1Stats.length > 0 && t1Stats[0].score > 0 ? t1Stats[0].playerName : null;
-
-      match.playerStats.forEach(player => {
-        if (player.team !== 1 || player.isBot) return; // Only team 1 players for Survival
-        
-        if (!summary[player.playerName]) {
-          summary[player.playerName] = { score: 0, kills: 0, deaths: 0, matches: 0, wins: 0 };
-        }
-
-        summary[player.playerName].score += player.score;
-        summary[player.playerName].kills += player.kills;
-        summary[player.playerName].deaths += player.deaths || 0;
-        summary[player.playerName].matches += 1;
-        
-        if (player.playerName === winner) {
-          summary[player.playerName].wins += 1;
-        }
-      });
+  const survivalTeamSummary = useMemo(() => {
+    return [...survivalMatches].sort((a, b) => {
+      const waveA = a.waveIndex ?? 0;
+      const waveB = b.waveIndex ?? 0;
+      if (waveB !== waveA) return waveB - waveA;
+      return b.team1Score - a.team1Score;
     });
-
-    return Object.entries(summary)
-      .map(([name, stats]) => ({ name, ...stats }))
-      .sort((a, b) => b.score - a.score);
   }, [survivalMatches]);
 
   if (!isLoaded) return <div className="h-screen bg-[#0A0A0A] flex items-center justify-center text-cyan-500 font-bold tracking-widest uppercase">Loading Live Data...</div>;
@@ -153,7 +130,17 @@ export default function TVPage() {
   const gridColsClass = showSplitScreen ? 'grid-cols-2' : 'grid-cols-1 max-w-7xl mx-auto';
 
   return (
-    <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans p-6 md:p-12 overflow-hidden flex flex-col">
+    <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans p-6 md:p-12 overflow-hidden flex flex-col relative">
+      
+      {/* Hidden Date Picker for testing */}
+      <div className="absolute top-4 right-4 z-50 opacity-10 hover:opacity-100 transition-opacity">
+        <input 
+          type="date" 
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="bg-black/50 border border-white/20 text-gray-400 text-xs p-1 rounded outline-none"
+        />
+      </div>
       {liveMatch && (
         <div className="mb-8 shrink-0 flex flex-col items-center">
            <h1 className="text-2xl font-black tracking-widest uppercase text-red-500 mb-4 flex items-center justify-center gap-3 animate-pulse">
@@ -222,18 +209,18 @@ export default function TVPage() {
             </h1>
             
             {/* Survival Leaderboard */}
-            {survivalPlayerSummary.length > 0 && (
+            {survivalTeamSummary.length > 0 && (
               <div className="mb-10 shrink-0">
-                <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center">Top Players</h2>
+                <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center">Top Teams</h2>
                 <div className="grid grid-cols-2 gap-4">
-                  {survivalPlayerSummary.slice(0, 4).map((player, idx) => (
-                    <div key={player.name} className={`bg-[#121212] border ${idx === 0 ? 'border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'border-white/10'} rounded-xl p-4 text-center transition-all`}>
-                      <div className="text-sm text-gray-400 uppercase tracking-widest font-bold truncate">
-                        {player.name} {idx === 0 && <span className="ml-2 text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded">1ST</span>}
+                  {survivalTeamSummary.slice(0, 4).map((match, idx) => (
+                    <div key={match.matchId} className={`bg-[#121212] border ${idx === 0 ? 'border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'border-white/10'} rounded-xl p-4 text-center transition-all flex flex-col`}>
+                      <div className="text-sm text-gray-400 uppercase tracking-widest font-bold truncate mb-1">
+                        {match.team1Name || 'Unknown Team'} {idx === 0 && <span className="ml-2 text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded align-middle">HIGH SCORE</span>}
                       </div>
-                      <div className="text-5xl font-black text-white mt-2">{player.score}</div>
+                      <div className="text-5xl font-black text-white mt-auto">{match.team1Score}</div>
                       <div className="text-xs text-gray-500 mt-2 uppercase tracking-widest font-bold">
-                         <span className="text-gray-300">{player.wins}</span> Win{player.wins !== 1 && 's'} <span className="mx-2 opacity-30">|</span> <span className="text-gray-300">{player.kills}</span> Kills
+                         <span className="text-gray-300">{match.waveIndex !== undefined ? match.waveIndex + 1 : '-'}</span> Wave Reached
                       </div>
                     </div>
                   ))}
@@ -379,13 +366,13 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
       <table className="w-full text-left table-fixed">
         <tbody className="divide-y divide-white/5 text-[10px]">
           {sortedStats.slice(0, 4).map((player, idx) => {
-            const isMVP = idx === 0 && player.score > 0;
+            const isMVP = !isSurvival && idx === 0 && player.score > 0;
             return (
               <tr key={idx} className={`${isMVP && !player.isBot ? rowHighlight : player.isBot ? 'opacity-70 italic' : ''}`}>
                 <td className="py-1.5 px-2 font-medium text-gray-300 truncate w-[60%]">
                   <div className="flex items-center gap-1 w-full truncate">
                     <span className={`truncate ${isMVP && !player.isBot ? 'font-bold text-white' : ''}`}>{player.playerName}</span>
-                    {isMVP && !player.isBot && <span className={`shrink-0 text-[6px] px-1 rounded uppercase tracking-wider font-bold ${mvpBadge}`}>{isSurvival ? 'WINNER' : 'MVP'}</span>}
+                    {isMVP && !player.isBot && <span className={`shrink-0 text-[6px] px-1 rounded uppercase tracking-wider font-bold ${mvpBadge}`}>MVP</span>}
                   </div>
                 </td>
                 <td className={`py-1.5 px-1 font-mono text-center font-bold ${textColor}`}>{player.score}</td>
