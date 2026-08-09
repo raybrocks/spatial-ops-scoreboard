@@ -4,6 +4,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy, Crosshair } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
+import { getSurvivalHighscores } from '@/lib/survival-highscores';
+import { HighscoreBadge } from '@/components/HighscoreBadge';
 import { PlayerStat, MatchData } from '@/types/match';
 
 const formatGameMode = (mode?: string) => {
@@ -115,6 +117,8 @@ export default function TVPage() {
       .sort((a, b) => b.totalScore - a.totalScore);
   }, [teamDeathmatchMatches]);
 
+  const survivalHighscores = useMemo(() => getSurvivalHighscores(survivalMatches), [survivalMatches]);
+
   const survivalTeamSummary = useMemo(() => {
     return [...survivalMatches].sort((a, b) => {
       const waveA = a.waveIndex ?? 0;
@@ -216,7 +220,8 @@ export default function TVPage() {
                   {survivalTeamSummary.slice(0, 4).map((match, idx) => (
                     <div key={match.matchId} className={`bg-[#121212] border ${idx === 0 ? 'border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_20px_rgba(34,211,238,0.15)]' : 'border-white/10'} rounded-xl p-4 text-center transition-all flex flex-col`}>
                       <div className="text-sm text-gray-400 uppercase tracking-widest font-bold truncate mb-1">
-                        {match.team1Name || 'Unknown Team'} {idx === 0 && <span className="ml-2 text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded align-middle">HIGH SCORE</span>}
+                        {match.team1Name || 'Unknown Team'}
+                        <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} className="ml-2 inline-block" />
                       </div>
                       <div className="text-5xl font-black text-white mt-auto">{match.team1Score}</div>
                       <div className="text-xs text-gray-500 mt-2 uppercase tracking-widest font-bold">
@@ -281,7 +286,7 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
       </div>
       <div className="p-4 flex justify-between items-center gap-4 shrink-0">
         {/* Team 1 (Blue) */}
-        <div className={`flex-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'} rounded-lg p-3 flex flex-col items-center relative overflow-hidden transition-all`}>
+        <div className={`flex-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'} rounded-lg p-3 pt-6 flex flex-col items-center relative overflow-hidden transition-all`}>
           {team1Won && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-lg shadow-md tracking-widest uppercase">Winner</div>}
           <div className="text-blue-400 font-bold uppercase text-xs flex items-center justify-center gap-1.5 z-10 w-full truncate mt-1">
             <span className={`truncate ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
@@ -293,7 +298,7 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
         <div className="text-gray-600 font-black text-sm uppercase tracking-widest">VS</div>
         
         {/* Team 2 (Orange) */}
-        <div className={`flex-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'} rounded-lg p-3 flex flex-col items-center relative overflow-hidden transition-all`}>
+        <div className={`flex-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'} rounded-lg p-3 pt-6 flex flex-col items-center relative overflow-hidden transition-all`}>
           {team2Won && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-lg shadow-md tracking-widest uppercase">Winner</div>}
           <div className="text-orange-400 font-bold uppercase text-xs flex items-center justify-center gap-1.5 z-10 w-full truncate mt-1">
             <span className={`truncate ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Team 2'}</span>

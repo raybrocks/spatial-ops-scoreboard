@@ -5,6 +5,8 @@ import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, CheckSquare, ChevronLeft, ChevronRight, Crosshair } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { MatchData, PlayerStat } from '@/types/match';
+import { getSurvivalHighscores } from '@/lib/survival-highscores';
+import { HighscoreBadge } from '@/components/HighscoreBadge';
 
 const formatGameMode = (mode?: string) => {
   if (!mode) return '';
@@ -311,6 +313,9 @@ export default function Home() {
       .sort((a, b) => b.score - a.score);
   }, [tdmMatches]);
 
+  // --- HIGH SCORE LOGIC ---
+  const survivalHighscores = useMemo(() => getSurvivalHighscores(survivalMatches), [survivalMatches]);
+
   const survivalTeamSummary = useMemo(() => {
     return [...survivalMatches].sort((a, b) => {
       const waveA = a.waveIndex ?? 0;
@@ -462,13 +467,13 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setIsAutoFetchEnabled(!isAutoFetchEnabled)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
+                  className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
                     isAutoFetchEnabled 
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
-                      : 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
+                      ? 'bg-green-900/30 text-green-400 border-2 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:bg-green-900/50' 
+                      : 'bg-red-950/30 text-red-500 border border-red-500/30 hover:bg-red-900/40'
                   }`}
                 >
-                  {isAutoFetchEnabled ? 'Turn OFF' : 'Turn ON'}
+                  {isAutoFetchEnabled ? 'ON' : 'OFF'}
                 </button>
               </div>
               
@@ -534,7 +539,7 @@ export default function Home() {
                       return (
                       <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-3 print:bg-transparent print:border-gray-300 print:p-2 transition-all flex flex-col`}>
                         {idx === 0 && <div className="absolute top-0 right-0 bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden z-10">Winner</div>}
-                        <div className="text-xs text-gray-500 uppercase tracking-widest font-bold print:text-black print:text-[8px] truncate mt-1">
+                        <div className="text-xs text-gray-500 uppercase tracking-widest font-bold print:text-black print:text-[8px] truncate mt-3">
                           <span className={idx === 0 ? 'text-white' : ''}>{team.name}</span>
                           <span className={`ml-1.5 text-[8px] px-1 py-0.5 rounded print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-500/20 text-gray-400'}`}>
                             {placement}{suffix}
@@ -623,12 +628,15 @@ export default function Home() {
                           const suffix = placement === 1 ? 'ST' : placement === 2 ? 'ND' : placement === 3 ? 'RD' : 'TH';
                           return (
                           <tr key={match.matchId} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#0f1b21]' : 'bg-[#121212]'}`}>
-                            <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
-                              <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
-                              <span className={`truncate ${idx === 0 ? 'text-cyan-400 font-bold' : ''}`}>{match.team1Name || 'Unknown Team'}</span>
-                              <span className={`text-[8px] px-1 py-0.5 rounded print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-cyan-500/20 text-cyan-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                                {placement}{suffix}
-                              </span>
+                            <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex flex-col justify-center sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
+                                <span className={`truncate ${idx === 0 ? 'text-cyan-400 font-bold' : ''}`}>{match.team1Name || 'Unknown Team'}</span>
+                                <span className={`text-[8px] px-1 py-0.5 rounded print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-cyan-500/20 text-cyan-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                  {placement}{suffix}
+                                </span>
+                              </div>
+                              <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} className="ml-5 mt-1 self-start" />
                             </td>
                             <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{match.waveIndex !== undefined ? match.waveIndex + 1 : '-'}</td>
                             <td className="py-2 px-2 font-mono text-center font-bold text-cyan-400 print:py-1 print:px-1 print:text-black">{match.team1Score}</td>
@@ -726,7 +734,7 @@ export default function Home() {
                   {!isSurvival ? (
                     <div className="p-3 flex justify-between items-center gap-3 print:p-1.5 print:gap-1">
                       {/* Team 1 */}
-                      <div className={`flex-1 rounded-lg p-2 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'}`}>
+                      <div className={`flex-1 rounded-lg p-2 pt-5 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 print:pt-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'}`}>
                         {team1Won && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden">Winner</div>}
                         <div className="text-blue-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
                           {editingTeam?.matchId === match.matchId && editingTeam.team === 1 ? (
@@ -760,7 +768,7 @@ export default function Home() {
                       <div className="text-gray-600 font-black text-xs uppercase tracking-widest print:text-black print:text-[8px]">VS</div>
                       
                       {/* Team 2 */}
-                      <div className={`flex-1 rounded-lg p-2 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'}`}>
+                      <div className={`flex-1 rounded-lg p-2 pt-5 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 print:pt-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'}`}>
                         {team2Won && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden">Winner</div>}
                         <div className="text-orange-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
                           {editingTeam?.matchId === match.matchId && editingTeam.team === 2 ? (
@@ -792,13 +800,16 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3 flex justify-center items-center gap-3 bg-cyan-950/20 border-b border-white/5 print:bg-transparent print:border-gray-200 print:p-1.5">
+                    <div className="p-3 flex justify-center items-center gap-3 bg-cyan-950/20 border-b border-white/5 print:bg-transparent print:border-gray-200 print:p-1.5 relative">
                       <div className="flex flex-col items-center">
                         <span className="text-cyan-400 font-bold uppercase tracking-widest text-xs print:text-black print:text-[10px]">Survival Mode {duration ? ` ${duration}` : ''}</span>
                         {match.waveIndex !== undefined && (
                           <span className="text-2xl font-black text-white mt-1 print:text-black">Wave {match.waveIndex + 1}</span>
                         )}
                         <span className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 print:text-gray-600 print:text-[8px]">Team Score: <span className="text-white font-bold">{match.team1Score}</span></span>
+                        <div className="mt-2">
+                          <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} />
+                        </div>
                       </div>
                     </div>
                   )}

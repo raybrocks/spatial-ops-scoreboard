@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
+import { getSurvivalHighscores } from '@/lib/survival-highscores';
+import { HighscoreBadge } from '@/components/HighscoreBadge';
 import { PlayerStat } from '@/types/match';
 
 const formatGameMode = (mode?: string) => {
@@ -41,6 +43,8 @@ export default function SpectatorPage() {
   const todayDate = useMemo(() => {
     return format(new Date(), 'yyyy-MM-dd');
   }, []);
+
+  const survivalHighscores = useMemo(() => getSurvivalHighscores(matches), [matches]);
 
   const sortedMatches = useMemo(() => {
     let filtered = [...matches].filter(m => m.matchStartTimestamp);
@@ -137,11 +141,14 @@ export default function SpectatorPage() {
                 
                 {latestMatch.gameMode?.toLowerCase() === 'survival' ? (
                   <>
-                    <div className="flex justify-center items-center mb-5 bg-cyan-950/20 border border-cyan-500/20 rounded-xl p-3 flex-col">
+                     <div className="flex justify-center items-center mb-5 bg-cyan-950/20 border border-cyan-500/20 rounded-xl p-3 flex-col">
                        <span className="text-cyan-400 font-bold uppercase text-[10px] tracking-widest">Survival {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp)}</span>
                        {latestMatch.waveIndex !== undefined && <span className="text-3xl font-black text-white mt-1">Wave {latestMatch.waveIndex + 1}</span>}
                        <span className="text-[10px] text-gray-500 uppercase mt-1">Team Score: <span className="text-white font-bold">{latestMatch.team1Score}</span></span>
-                    </div>
+                       <div className="mt-2">
+                         <HighscoreBadge level={survivalHighscores.get(latestMatch.matchId) || 'NONE'} />
+                       </div>
+                     </div>
                     <div className="flex flex-col gap-3">
                       <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 1)} color="blue" isSurvival={true} />
                     </div>
@@ -199,10 +206,15 @@ export default function SpectatorPage() {
                            <span className={`truncate w-24 text-right ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-400'}`}>{match.team2Name || 'Team 2'}</span>
                         </div>
                       ) : (
-                        <div className="flex justify-center items-center px-1 gap-2">
-                           <span className="text-gray-400 uppercase tracking-widest text-[9px]">Score:</span>
-                           <span className="font-black text-sm text-white">{match.team1Score}</span>
-                           {match.waveIndex !== undefined && <span className="text-gray-500 text-[9px] ml-2 uppercase">(Wave {match.waveIndex + 1})</span>}
+                        <div className="flex flex-col items-center px-1">
+                          <div className="flex justify-center items-center gap-2">
+                            <span className="text-gray-400 uppercase tracking-widest text-[9px]">Score:</span>
+                            <span className="font-black text-sm text-white">{match.team1Score}</span>
+                            {match.waveIndex !== undefined && <span className="text-gray-500 text-[9px] ml-2 uppercase">(Wave {match.waveIndex + 1})</span>}
+                          </div>
+                          <div className="mt-1">
+                            <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} />
+                          </div>
                         </div>
                       )}
                     </div>

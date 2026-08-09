@@ -1,4 +1,4 @@
 # User Preferences
 - The user identifies as a "vibe-coder" learning fullstack.
 - IMPORTANT: When requiring the user to perform manual actions outside the code (e.g., in Firebase, Supabase, Github, Vercel), provide DETAILED, step-by-step descriptions of exactly how to perform those actions. Do not assume prior knowledge of these platforms.
-- GIT: Do not automatically commit or push to Git unless explicitly requested by the user.
+- GIT: NEVER push to Github automatically. Only push when the user explicitly says so (e.g. "push to git"). Wait for permission before pushing.
