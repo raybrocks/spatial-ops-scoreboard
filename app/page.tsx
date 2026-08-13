@@ -7,6 +7,7 @@ import { useMatchData } from '@/hooks/use-match-data';
 import { MatchData, PlayerStat } from '@/types/match';
 import { getSurvivalHighscores } from '@/lib/survival-highscores';
 import { HighscoreBadge } from '@/components/HighscoreBadge';
+import { TdmBanner, SurvivalBanner } from '@/components/SectionTitles';
 
 const formatGameMode = (mode?: string) => {
   if (!mode) return '';
@@ -314,7 +315,10 @@ export default function Home() {
   }, [tdmMatches]);
 
   // --- HIGH SCORE LOGIC ---
-  const survivalHighscores = useMemo(() => getSurvivalHighscores(survivalMatches), [survivalMatches]);
+  const survivalHighscores = useMemo(() => {
+    const allSurvival = matches.filter(m => m.gameMode?.toLowerCase() === 'survival');
+    return getSurvivalHighscores(allSurvival);
+  }, [matches]);
 
   const survivalTeamSummary = useMemo(() => {
     return [...survivalMatches].sort((a, b) => {
@@ -374,24 +378,45 @@ export default function Home() {
 
       {/* Header */}
       <header className="border-b border-white/10 bg-[#0D0D0D] p-4 print:bg-transparent print:border-0 print:p-0 print:mb-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3 justify-center md:justify-start w-full md:w-auto">
-            <Trophy className="w-8 h-8 text-cyan-400 print:hidden" />
-            <img src="/logo.png" alt="KRS VR Arena" className="hidden print:block h-16 object-contain" />
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold tracking-tight text-cyan-400 print:text-black print:text-2xl print:tracking-widest">MIXED REALITY SHOOTER</h1>
-            </div>
+        <div className="max-w-6xl mx-auto relative flex flex-col md:flex-row justify-end items-center gap-4 min-h-[48px]">
+          <div className="md:absolute md:left-1/2 md:-translate-x-1/2 flex items-center justify-center">
+            <img src="/logo.svg" alt="KRS VR Arena" className="h-10 sm:h-12 print:h-16 object-contain" />
           </div>
           
-          <div className="flex gap-3 no-print">
-             <button
-              onClick={selectAllForPrint}
-              disabled={sortedMatches.length === 0}
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md text-xs uppercase tracking-widest transition-colors"
-            >
-              <CheckSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">{selectedForPrint.size === sortedMatches.length && sortedMatches.length > 0 ? 'Deselect All' : 'Select All'}</span>
-            </button>
+          <div className="flex gap-3 no-print z-10">
+            {isAdminMode && (
+              <div className="flex gap-3 no-print">
+                <button
+                  onClick={selectAllForPrint}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
+                    selectedForPrint.size === sortedMatches.length && sortedMatches.length > 0
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                  }`}
+                >
+                  <CheckSquare className="w-4 h-4" />
+                  <span className="hidden sm:inline">{selectedForPrint.size === sortedMatches.length && sortedMatches.length > 0 ? 'Deselect All' : 'Select All'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const autoFetchBtn = document.querySelector('button:has(svg.lucide-refresh-cw)');
+                    if (autoFetchBtn && autoFetchBtn.textContent?.includes('ON')) {
+                      (autoFetchBtn as HTMLButtonElement).click();
+                    }
+                    window.print();
+                  }}
+                  disabled={selectedForPrint.size === 0}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
+                    selectedForPrint.size > 0
+                      ? 'bg-gray-600 hover:bg-gray-700 text-white'
+                      : 'bg-white/5 text-white/30 cursor-not-allowed'
+                  }`}
+                >
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden sm:inline">Print ({selectedForPrint.size})</span>
+                </button>
+              </div>
+            )}
              <button
               onClick={handleAdminToggle}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs uppercase tracking-widest transition-colors ${isAdminMode ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}`}
@@ -399,14 +424,7 @@ export default function Home() {
               {isAdminMode ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
               <span className="hidden sm:inline">{isAdminMode ? 'Operator' : 'Customer'}</span>
             </button>
-             <button
-              onClick={() => window.print()}
-              disabled={selectedForPrint.size === 0}
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md text-xs uppercase tracking-widest transition-colors"
-            >
-              <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Print ({selectedForPrint.size})</span>
-            </button>
+
           </div>
         </div>
       </header>
@@ -428,7 +446,7 @@ export default function Home() {
               <ChevronLeft className="w-5 h-5" />
             </button>
             
-            <span className="text-sm uppercase tracking-widest text-cyan-400 font-bold min-w-[140px] text-center">
+            <span className="text-sm uppercase tracking-widest text-gray-400 font-bold min-w-[140px] text-center">
               {selectedDate ? format(parseISO(selectedDate), 'dd.MM.yyyy') : '...'}
             </span>
             
@@ -453,7 +471,7 @@ export default function Home() {
         {/* Admin Control Section (No Print) */}
         {isAdminMode && (
           <section className="bg-[#121212] rounded-xl border border-white/10 p-6 mb-8 no-print">
-          <h2 className="text-sm uppercase tracking-widest font-bold mb-4 flex items-center gap-2 text-cyan-400">
+          <h2 className="text-sm uppercase tracking-widest font-bold mb-4 flex items-center gap-2 text-gray-400">
             <Upload className="w-4 h-4" />
             Match Import & Auto-Fetch
           </h2>
@@ -490,7 +508,7 @@ export default function Home() {
                 <button 
                   onClick={fetchFromGameServer}
                   disabled={fetchStatus === 'fetching'}
-                  className="mt-4 text-[10px] uppercase tracking-widest text-cyan-500 border border-cyan-500/30 hover:bg-cyan-500/10 px-3 py-1.5 rounded self-start disabled:opacity-50 transition-colors"
+                  className="mt-4 text-[10px] uppercase tracking-widest text-gray-500 border border-gray-500/30 hover:bg-gray-500/10 px-3 py-1.5 rounded self-start disabled:opacity-50 transition-colors"
                 >
                   Force Check Now
                 </button>
@@ -504,7 +522,7 @@ export default function Home() {
             <div className="flex-1 flex flex-col justify-center">
               <label className="flex flex-col items-center justify-center w-full h-full min-h-[120px] border border-white/10 border-dashed rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-colors">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className="w-8 h-8 text-cyan-500/50 mb-3" />
+                  <Upload className="w-8 h-8 text-gray-500/50 mb-3" />
                   <p className="mb-2 text-sm text-gray-400"><span className="font-bold text-gray-300">Click to upload</span> or drag and drop</p>
                   <p className="text-[10px] uppercase tracking-widest text-gray-500">JSON match file</p>
                 </div>
@@ -522,32 +540,42 @@ export default function Home() {
           {/* TEAM DEATHMATCH SUMMARY */}
           {tdmMatches.length > 0 && (
             <div className="mb-8 border-b border-white/5 pb-8 print:border-none print:pb-0">
-              <h1 className="text-2xl font-black tracking-widest uppercase text-yellow-500 mb-6 flex items-center gap-3 print:text-black">
-                <Trophy className="w-6 h-6 print:hidden" />
-                TEAM DEATHMATCH: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
-              </h1>
+              <TdmBanner />
               
               {/* TDM Team Stats */}
               {tdmDailySummary.length > 0 && (
                 <div className="mb-6 print-section">
                   <h2 className="text-sm font-bold tracking-widest uppercase text-gray-200 mb-4 print:text-black">Team Leaderboard</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
+                  <div className="flex flex-col gap-3 print:gap-2">
                     {tdmDailySummary.map((team, idx) => {
                       const placement = idx + 1;
                       const suffix = placement === 1 ? 'ST' : placement === 2 ? 'ND' : placement === 3 ? 'RD' : 'TH';
                       
                       return (
-                      <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-3 print:bg-transparent print:border-gray-300 print:p-2 transition-all flex flex-col`}>
-                        {idx === 0 && <div className="absolute top-0 right-0 bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden z-10">Winner</div>}
-                        <div className="text-xs text-gray-500 uppercase tracking-widest font-bold print:text-black print:text-[8px] truncate mt-3">
-                          <span className={idx === 0 ? 'text-white' : ''}>{team.name}</span>
-                          <span className={`ml-1.5 text-[8px] px-1 py-0.5 rounded print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-500/20 text-gray-400'}`}>
-                            {placement}{suffix}
-                          </span>
+                      <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-4 print:bg-transparent print:border-gray-300 print:p-2 transition-all flex items-center justify-between`}>
+                        {idx === 0 && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] z-10 print:hidden"></div>}
+                        
+                        <div className="flex items-center gap-4 sm:gap-6 z-20 pl-2">
+                          <div className={`text-2xl sm:text-4xl font-black ${idx === 0 ? 'text-yellow-500' : 'text-gray-600'} w-8 text-right`}>{placement}</div>
+                          
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                              <span className={`text-sm sm:text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
+                                {team.name}
+                              </span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-500/20 text-gray-400'}`}>
+                                {placement}{suffix}
+                              </span>
+                              {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase print:hidden">Winner</span>}
+                            </div>
+                            <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1 print:text-black print:text-[8px]">
+                              {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-2xl font-black text-white mt-1 print:text-black print:text-lg">{team.totalScore}</div>
-                        <div className="text-[10px] text-gray-400 mt-1 print:text-black print:text-[8px]">
-                          {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
+
+                        <div className="text-3xl sm:text-5xl font-black text-white tracking-tighter pr-2 print:text-black print:text-2xl">
+                          {team.totalScore}
                         </div>
                       </div>
                     )})}
@@ -603,20 +631,17 @@ export default function Home() {
           {/* SURVIVAL SUMMARY */}
           {survivalMatches.length > 0 && (
             <div className="mb-8 print-section">
-              <h1 className="text-2xl font-black tracking-widest uppercase text-cyan-400 mb-6 flex items-center gap-3 print:text-black">
-                <Crosshair className="w-6 h-6 print:hidden" />
-                SURVIVAL MODE: {selectedDate ? format(parseISO(selectedDate), 'MMM d, yyyy') : 'All Time'}
-              </h1>
+              <SurvivalBanner />
 
               {survivalTeamSummary.length > 0 && (
                 <div className="print-section">
-                  <h2 className="text-sm font-bold tracking-widest uppercase text-gray-200 mb-4 print:text-black">Team Leaderboard</h2>
-                  <div className="bg-[#121212] border border-white/10 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
+                  <h2 className="text-sm font-bold tracking-widest uppercase text-red-500 mb-4 print:text-black">Team Leaderboard</h2>
+                  <div className="bg-[#0a0505] border border-red-900/30 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[500px]">
-                      <thead className="bg-[#1A1A1A] print:bg-gray-100">
-                        <tr className="text-[10px] uppercase tracking-widest text-gray-500 print:text-black print:text-[8px]">
-                          <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#1A1A1A] z-10 print:static print:bg-transparent">Team</th>
+                      <thead className="bg-[#1a0a0a] border-b border-red-900/30 print:bg-gray-100">
+                        <tr className="text-[10px] uppercase tracking-widest text-red-400/70 print:text-black print:text-[8px]">
+                          <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#1a0a0a] z-10 print:static print:bg-transparent">Team</th>
                           <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Wave Reached</th>
                           <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Team Score</th>
                           <th className="py-2 px-2 font-bold text-center min-w-[80px] print:py-1 print:px-1">Time</th>
@@ -627,19 +652,19 @@ export default function Home() {
                           const placement = idx + 1;
                           const suffix = placement === 1 ? 'ST' : placement === 2 ? 'ND' : placement === 3 ? 'RD' : 'TH';
                           return (
-                          <tr key={match.matchId} className={`group hover:bg-[#1a1a1a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#0f1b21]' : 'bg-[#121212]'}`}>
+                          <tr key={match.matchId} className={`group hover:bg-[#1f0a0a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#240a0a]' : 'bg-[#0a0505]'}`}>
                             <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex flex-col justify-center sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
                               <div className="flex items-center gap-2">
-                                <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
-                                <span className={`truncate ${idx === 0 ? 'text-cyan-400 font-bold' : ''}`}>{match.team1Name || 'Unknown Team'}</span>
-                                <span className={`text-[8px] px-1 py-0.5 rounded print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-cyan-500/20 text-cyan-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                <span className="text-red-600 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
+                                <span className={`truncate ${idx === 0 ? 'text-red-500 font-bold' : ''}`}>{match.team1Name || 'Unknown Team'}</span>
+                                <span className={`text-[8px] px-1 py-0.5 rounded font-bold print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-red-500/20 text-red-500' : 'bg-red-900/40 text-red-500/70'}`}>
                                   {placement}{suffix}
                                 </span>
                               </div>
                               <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} className="ml-5 mt-1 self-start" />
                             </td>
-                            <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{match.waveIndex !== undefined ? match.waveIndex + 1 : '-'}</td>
-                            <td className="py-2 px-2 font-mono text-center font-bold text-cyan-400 print:py-1 print:px-1 print:text-black">{match.team1Score}</td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-gray-300 print:py-1 print:px-1 print:text-black">{match.waveIndex !== undefined ? match.waveIndex + 1 : '-'}</td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-red-500 print:py-1 print:px-1 print:text-black">{match.team1Score}</td>
                             <td className="py-2 px-2 font-mono text-center text-gray-500 print:py-1 print:px-1 print:text-black">{format(parseISO(match.matchStartTimestamp), 'dd.MM HH:mm')}</td>
                           </tr>
                         )})}
@@ -656,11 +681,11 @@ export default function Home() {
         {/* Match Details Toggle Section (No Print) */}
         {sortedMatches.length > 0 && (
           <div className="mb-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/10 pb-4 no-print mt-12">
-            <h2 className="text-sm uppercase tracking-widest font-bold text-cyan-400">Match Details</h2>
+            <h2 className="text-sm uppercase tracking-widest font-bold text-gray-400">Match Details</h2>
 
             <button
               onClick={() => setShowMatchDetails(!showMatchDetails)}
-              className="bg-cyan-600/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors shadow-lg shadow-cyan-900/20"
+              className="bg-gray-600/20 hover:bg-gray-500/30 text-gray-400 border border-gray-500/30 px-6 py-2 rounded-md text-xs uppercase tracking-widest font-bold transition-colors shadow-lg shadow-gray-900/20"
             >
               {showMatchDetails ? 'Hide match details' : 'Show details from each match'}
             </button>
@@ -687,26 +712,26 @@ export default function Home() {
               return (
                 <div 
                   key={match.matchId} 
-                  className={`bg-[#121212] rounded-xl border flex flex-col transition-all overflow-hidden ${isSelected ? 'border-cyan-500 ring-2 ring-cyan-900/30 print-section' : 'border-white/10 no-print'}`}
+                  className={`rounded-xl border flex flex-col transition-all overflow-hidden ${isSelected ? `print-section ring-2 ${isSurvival ? 'border-red-500 ring-red-900/50' : 'border-gray-500 ring-gray-700/50'}` : `no-print ${isSurvival ? 'border-red-900/30' : 'border-white/10'}`} ${isSurvival ? 'bg-[#0a0505]' : 'bg-[#121212]'}`}
                 >
                   {/* Match Header */}
-                  <div className="flex items-center justify-between p-2 md:p-3 border-b border-white/10 bg-[#0D0D0D] print:p-1.5 print:bg-gray-100 print:border-gray-300">
+                  <div className={`flex items-center justify-between p-2 md:p-3 border-b ${isSurvival ? 'border-red-900/30 bg-[#1a0a0a]' : 'border-white/10 bg-[#0D0D0D]'} print:p-1.5 print:bg-gray-100 print:border-gray-300`}>
                     <div className="flex items-center gap-2 text-xs">
                       <input 
                         type="checkbox" 
                         checked={isSelected}
                         onChange={() => togglePrintSelection(match.matchId)}
-                        className="w-3.5 h-3.5 rounded border-white/10 bg-white/5 text-cyan-500 cursor-pointer"
+                        className="w-3.5 h-3.5 rounded border-white/10 bg-white/5 text-gray-500 cursor-pointer"
                         title="Select for Print"
                       />
-                      <span className="text-cyan-400 font-bold print:text-black">
+                      <span className="text-gray-400 font-bold print:text-black">
                         {format(parseISO(match.matchStartTimestamp), 'dd.MM.yy HH:mm')}
                       </span>
                       <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-300 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black">
                         {formatGameMode(match.gameMode)}
                       </span>
                       {match.gameMode?.toLowerCase() === 'survival' && match.lifeMode && (
-                        <span className="px-1.5 py-0.5 rounded bg-cyan-900/30 border border-cyan-500/20 text-[9px] text-cyan-300 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black">
+                        <span className="px-1.5 py-0.5 rounded bg-gray-900/30 border border-gray-500/20 text-[9px] text-gray-300 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black">
                           {formatLifeMode(match.lifeMode)}
                         </span>
                       )}
@@ -800,13 +825,13 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3 flex justify-center items-center gap-3 bg-cyan-950/20 border-b border-white/5 print:bg-transparent print:border-gray-200 print:p-1.5 relative">
+                    <div className="p-3 flex justify-center items-center gap-3 bg-[#1a0a0a] border-b border-red-900/30 print:bg-transparent print:border-gray-200 print:p-1.5 relative">
                       <div className="flex flex-col items-center">
-                        <span className="text-cyan-400 font-bold uppercase tracking-widest text-xs print:text-black print:text-[10px]">Survival Mode {duration ? ` ${duration}` : ''}</span>
+                        <span className="text-red-500 font-bold uppercase tracking-widest text-xs print:text-black print:text-[10px]">Survival Mode {duration ? ` ${duration}` : ''}</span>
                         {match.waveIndex !== undefined && (
                           <span className="text-2xl font-black text-white mt-1 print:text-black">Wave {match.waveIndex + 1}</span>
                         )}
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 print:text-gray-600 print:text-[8px]">Team Score: <span className="text-white font-bold">{match.team1Score}</span></span>
+                        <span className="text-[10px] text-red-400/70 uppercase tracking-widest mt-1 print:text-gray-600 print:text-[8px]">Team Score: <span className="text-red-400 font-bold">{match.team1Score}</span></span>
                         <div className="mt-2">
                           <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} />
                         </div>
@@ -816,7 +841,7 @@ export default function Home() {
 
                   {/* Player Stats Tables */}
                   <div className={`px-3 pb-3 grid grid-cols-1 gap-3 flex-1 print:p-1.5 print:gap-2 ${isSurvival ? '' : 'print:grid-cols-2'}`}>
-                    <TeamTable teamName="Team 1" stats={match.playerStats.filter(p => p.team === 1)} color="blue" isSurvival={isSurvival} />
+                    <TeamTable teamName="Team 1" stats={match.playerStats.filter(p => p.team === 1)} color={isSurvival ? 'red' : 'blue'} isSurvival={isSurvival} />
                     {!isSurvival && (
                       <TeamTable teamName="Team 2" stats={match.playerStats.filter(p => p.team === 2)} color="orange" />
                     )}

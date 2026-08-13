@@ -119,17 +119,17 @@ export default function SpectatorPage() {
         {/* Latest Match Details */}
         {latestMatch && (
           <div className="bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col shrink-0">
-             <div className="bg-cyan-950/40 p-3 text-center border-b border-cyan-500/20">
-               <span className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Latest Match</span>
+             <div className="bg-gray-950/40 p-3 text-center border-b border-gray-500/20">
+               <span className="text-xs text-gray-400 uppercase tracking-widest font-bold">Latest Match</span>
              </div>
              
              <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-cyan-400 font-bold text-xs tracking-wider">{format(parseISO(latestMatch.matchStartTimestamp), 'HH:mm')}</span>
+                  <span className="text-gray-400 font-bold text-xs tracking-wider">{format(parseISO(latestMatch.matchStartTimestamp), 'HH:mm')}</span>
                   <div className="flex gap-2">
                     <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-400 uppercase tracking-widest">{formatGameMode(latestMatch.gameMode)}</span>
                     {latestMatch.gameMode?.toLowerCase() === 'survival' && latestMatch.lifeMode && (
-                      <span className="px-2 py-0.5 rounded bg-cyan-900/30 border border-cyan-500/20 text-[10px] text-cyan-300 uppercase tracking-widest">{formatLifeMode(latestMatch.lifeMode)}</span>
+                      <span className="px-2 py-0.5 rounded bg-gray-900/30 border border-gray-500/20 text-[10px] text-gray-300 uppercase tracking-widest">{formatLifeMode(latestMatch.lifeMode)}</span>
                     )}
                     {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp) && (
                       <span className="text-[10px] text-gray-500 uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
@@ -141,8 +141,8 @@ export default function SpectatorPage() {
                 
                 {latestMatch.gameMode?.toLowerCase() === 'survival' ? (
                   <>
-                     <div className="flex justify-center items-center mb-5 bg-cyan-950/20 border border-cyan-500/20 rounded-xl p-3 flex-col">
-                       <span className="text-cyan-400 font-bold uppercase text-[10px] tracking-widest">Survival {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp)}</span>
+                     <div className="flex justify-center items-center mb-5 bg-gray-950/20 border border-gray-500/20 rounded-xl p-3 flex-col">
+                       <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Survival {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp)}</span>
                        {latestMatch.waveIndex !== undefined && <span className="text-3xl font-black text-white mt-1">Wave {latestMatch.waveIndex + 1}</span>}
                        <span className="text-[10px] text-gray-500 uppercase mt-1">Team Score: <span className="text-white font-bold">{latestMatch.team1Score}</span></span>
                        <div className="mt-2">
@@ -195,7 +195,7 @@ export default function SpectatorPage() {
                     <div key={match.matchId} className="bg-white/5 rounded-lg border border-white/5 flex flex-col p-2 text-[11px]">
                       <div className="flex justify-between items-center border-b border-white/5 pb-1 mb-1.5">
                          <span className="text-gray-400 text-[10px] font-bold">{format(parseISO(match.matchStartTimestamp), 'HH:mm')}</span>
-                         {isSurvival && <span className="text-cyan-500 text-[9px] uppercase tracking-widest">Survival {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}</span>}
+                         {isSurvival && <span className="text-gray-500 text-[9px] uppercase tracking-widest">Survival {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}</span>}
                       </div>
                       {!isSurvival ? (
                         <div className="flex justify-between items-center px-1">
