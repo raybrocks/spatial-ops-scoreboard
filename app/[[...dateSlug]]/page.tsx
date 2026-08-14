@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, CheckSquare, ChevronLeft, ChevronRight, Crosshair } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
@@ -45,7 +46,27 @@ export default function Home() {
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showMatchDetails, setShowMatchDetails] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
+  const params = useParams();
+  const router = useRouter();
+  const urlDate = params?.dateSlug?.[0] as string | undefined;
+
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate)) {
+      return urlDate;
+    }
+    return format(new Date(), 'yyyy-MM-dd');
+  });
+
+  useEffect(() => {
+    if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate) && urlDate !== selectedDate) {
+      setSelectedDate(urlDate);
+    }
+  }, [urlDate]);
+
+  const handleDateChange = (newDate: string) => {
+    setSelectedDate(newDate);
+    router.push(`/${newDate}`);
+  };
   
   const [isAutoFetchEnabled, setIsAutoFetchEnabled] = useState(false);
   const [fetchStatus, setFetchStatus] = useState<'idle' | 'fetching' | 'success' | 'error'>('idle');
@@ -435,12 +456,10 @@ export default function Home() {
           <div className="max-w-6xl mx-auto flex justify-center items-center gap-6">
             <button 
               onClick={() => {
-                if (selectedDate) {
-                  const idx = availableDates.indexOf(selectedDate);
-                  if (idx < availableDates.length - 1) setSelectedDate(availableDates[idx + 1]);
-                }
+                const idx = availableDates.indexOf(selectedDate);
+                if (idx < availableDates.length - 1) handleDateChange(availableDates[idx + 1]);
               }}
-              disabled={!selectedDate || availableDates.indexOf(selectedDate) === availableDates.length - 1}
+              disabled={availableDates.indexOf(selectedDate) >= availableDates.length - 1}
               className="p-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -452,12 +471,10 @@ export default function Home() {
             
             <button 
               onClick={() => {
-                if (selectedDate) {
-                  const idx = availableDates.indexOf(selectedDate);
-                  if (idx > 0) setSelectedDate(availableDates[idx - 1]);
-                }
+                const idx = availableDates.indexOf(selectedDate);
+                if (idx > 0) handleDateChange(availableDates[idx - 1]);
               }}
-              disabled={!selectedDate || availableDates.indexOf(selectedDate) === 0}
+              disabled={availableDates.indexOf(selectedDate) <= 0}
               className="p-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-5 h-5" />
@@ -571,7 +588,7 @@ export default function Home() {
                         </div>
 
                         <div className="text-3xl sm:text-5xl font-black text-white tracking-tighter pr-2 print:text-black print:text-2xl">
-                          {team.totalScore}
+                          {team.totalScore?.toLocaleString('no-NO')}
                         </div>
                       </div>
                     )})}
@@ -606,7 +623,7 @@ export default function Home() {
                                 <span className={`truncate ${idx === 0 ? 'text-yellow-500 font-bold' : ''}`}>{player.name}</span>
                               </td>
                               <td className="py-2 px-2 text-gray-500 text-[9px] uppercase tracking-widest truncate print:text-gray-600 print:py-1 print:px-1">{player.teamName}</td>
-                              <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
+                              <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score?.toLocaleString('no-NO')}</td>
                               <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.kills}</td>
                               <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.deaths}</td>
                               <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.assists}</td>
@@ -655,7 +672,7 @@ export default function Home() {
                               <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} className="ml-5 mt-1 self-start" />
                             </td>
                             <td className="py-2 px-2 font-mono text-center font-bold text-gray-300 print:py-1 print:px-1 print:text-black">{match.waveIndex !== undefined ? match.waveIndex + 1 : '-'}</td>
-                            <td className="py-2 px-2 font-mono text-center font-bold text-red-500 print:py-1 print:px-1 print:text-black">{match.team1Score}</td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-red-500 print:py-1 print:px-1 print:text-black">{match.team1Score?.toLocaleString('no-NO')}</td>
                             <td className="py-2 px-2 font-mono text-center text-gray-500 print:py-1 print:px-1 print:text-black">{format(parseISO(match.matchStartTimestamp), 'dd.MM HH:mm')}</td>
                           </tr>
                         )})}
@@ -690,7 +707,7 @@ export default function Home() {
             <div className="text-center py-12 bg-[#121212] rounded-xl border border-white/10 no-print">
               <Trophy className="w-12 h-12 text-gray-700 mx-auto mb-4" />
               <h3 className="text-sm font-bold tracking-widest uppercase text-gray-500">No matches found</h3>
-              <p className="text-xs text-gray-600 mt-2">Upload a JSON result file to see it here.</p>
+              <p className="text-xs text-gray-600 mt-2">Wait for the gamemaster to upload the first results.</p>
             </div>
           ) : (
             sortedMatches.map((match) => {
@@ -778,7 +795,7 @@ export default function Home() {
                             </>
                           )}
                         </div>
-                        <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score}</div>
+                        <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score?.toLocaleString('no-NO')}</div>
                       </div>
                       
                       <div className="text-gray-600 font-black text-xs uppercase tracking-widest print:text-black print:text-[8px]">VS</div>
@@ -812,7 +829,7 @@ export default function Home() {
                             </>
                           )}
                         </div>
-                        <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score}</div>
+                        <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score?.toLocaleString('no-NO')}</div>
                       </div>
                     </div>
                   ) : (
@@ -822,7 +839,7 @@ export default function Home() {
                         {match.waveIndex !== undefined && (
                           <span className="text-2xl font-black text-white mt-1 print:text-black">Wave {match.waveIndex + 1}</span>
                         )}
-                        <span className="text-[10px] text-red-400/70 uppercase tracking-widest mt-1 print:text-gray-600 print:text-[8px]">Team Score: <span className="text-red-400 font-bold">{match.team1Score}</span></span>
+                        <span className="text-[10px] text-red-400/70 uppercase tracking-widest mt-1 print:text-gray-600 print:text-[8px]">Team Score: <span className="text-red-400 font-bold">{match.team1Score?.toLocaleString('no-NO')}</span></span>
                         <div className="mt-2">
                           <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} />
                         </div>
@@ -891,7 +908,7 @@ function TeamTable({ teamName, stats, color, isSurvival }: { teamName: string, s
                         )}
                       </div>
                     </td>
-                    <td className={`py-1.5 px-1 font-mono text-center print:py-0.5 print:text-black ${textColor}`}>{player.score}</td>
+                    <td className={`py-1.5 px-1 font-mono text-center print:py-0.5 print:text-black ${textColor}`}>{player.score?.toLocaleString('no-NO')}</td>
                     <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.kills}</td>
                     <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.deaths}</td>
                     <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.assists}</td>

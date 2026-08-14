@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
@@ -40,9 +41,15 @@ const getMatchDuration = (start?: string, end?: string) => {
 export default function SpectatorPage() {
   const { matches, isLoaded } = useMatchData();
 
+  const params = useParams();
+  const urlDate = params?.dateSlug?.[0] as string | undefined;
+
   const todayDate = useMemo(() => {
+    if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate)) {
+      return urlDate;
+    }
     return format(new Date(), 'yyyy-MM-dd');
-  }, []);
+  }, [urlDate]);
 
   const survivalHighscores = useMemo(() => getSurvivalHighscores(matches), [matches]);
 
@@ -105,7 +112,7 @@ export default function SpectatorPage() {
                   <div className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-2">
                     {team.name} {idx === 0 && <span className="bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded text-[9px]">1ST</span>}
                   </div>
-                  <div className="text-4xl font-black text-white leading-none">{team.totalScore}</div>
+                  <div className="text-4xl font-black text-white leading-none">{team.totalScore?.toLocaleString('no-NO')}</div>
                 </div>
               ))}
             </div>
@@ -144,7 +151,7 @@ export default function SpectatorPage() {
                      <div className="flex justify-center items-center mb-5 bg-gray-950/20 border border-gray-500/20 rounded-xl p-3 flex-col">
                        <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Survival {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp)}</span>
                        {latestMatch.waveIndex !== undefined && <span className="text-3xl font-black text-white mt-1">Wave {latestMatch.waveIndex + 1}</span>}
-                       <span className="text-[10px] text-gray-500 uppercase mt-1">Team Score: <span className="text-white font-bold">{latestMatch.team1Score}</span></span>
+                       <span className="text-[10px] text-gray-500 uppercase mt-1">Team Score: <span className="text-white font-bold">{latestMatch.team1Score?.toLocaleString('no-NO')}</span></span>
                        <div className="mt-2">
                          <HighscoreBadge level={survivalHighscores.get(latestMatch.matchId) || 'NONE'} />
                        </div>
@@ -159,13 +166,13 @@ export default function SpectatorPage() {
                       <div className={`flex flex-col items-center flex-1 min-w-0 rounded-lg p-2 relative overflow-hidden transition-all ${latestMatch.team1Score > latestMatch.team2Score ? 'bg-blue-900/40 border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-blue-950/20 border border-blue-500/10 opacity-70'}`}>
                          {latestMatch.team1Score > latestMatch.team2Score && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">Win</div>}
                          <span className={`text-[10px] font-bold uppercase truncate w-full text-center ${latestMatch.team1Score > latestMatch.team2Score ? 'text-white' : 'text-blue-400'}`}>{latestMatch.team1Name || 'Team 1'}</span>
-                         <span className={`text-3xl font-black mt-1 z-10 ${latestMatch.team1Score > latestMatch.team2Score ? 'text-white' : 'text-blue-200/50'}`}>{latestMatch.team1Score}</span>
+                         <span className={`text-3xl font-black mt-1 z-10 ${latestMatch.team1Score > latestMatch.team2Score ? 'text-white' : 'text-blue-200/50'}`}>{latestMatch.team1Score?.toLocaleString('no-NO')}</span>
                       </div>
                       <div className="text-[10px] font-black text-gray-500 shrink-0">VS</div>
                       <div className={`flex flex-col items-center flex-1 min-w-0 rounded-lg p-2 relative overflow-hidden transition-all ${latestMatch.team2Score > latestMatch.team1Score ? 'bg-orange-900/40 border-2 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'bg-orange-950/20 border border-orange-500/10 opacity-70'}`}>
                          {latestMatch.team2Score > latestMatch.team1Score && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">Win</div>}
                          <span className={`text-[10px] font-bold uppercase truncate w-full text-center ${latestMatch.team2Score > latestMatch.team1Score ? 'text-white' : 'text-orange-400'}`}>{latestMatch.team2Name || 'Team 2'}</span>
-                         <span className={`text-3xl font-black mt-1 z-10 ${latestMatch.team2Score > latestMatch.team1Score ? 'text-white' : 'text-orange-200/50'}`}>{latestMatch.team2Score}</span>
+                         <span className={`text-3xl font-black mt-1 z-10 ${latestMatch.team2Score > latestMatch.team1Score ? 'text-white' : 'text-orange-200/50'}`}>{latestMatch.team2Score?.toLocaleString('no-NO')}</span>
                       </div>
                     </div>
                     
@@ -200,16 +207,16 @@ export default function SpectatorPage() {
                       {!isSurvival ? (
                         <div className="flex justify-between items-center px-1">
                            <span className={`truncate w-24 ${t1Won ? 'text-blue-400 font-bold' : 'text-gray-400'}`}>{match.team1Name || 'Team 1'}</span>
-                           <span className={`font-black text-sm ${t1Won ? 'text-white' : 'text-gray-400'}`}>{match.team1Score}</span>
+                           <span className={`font-black text-sm ${t1Won ? 'text-white' : 'text-gray-400'}`}>{match.team1Score?.toLocaleString('no-NO')}</span>
                            <span className="text-gray-700 mx-2 text-[10px]">-</span>
-                           <span className={`font-black text-sm ${t2Won ? 'text-white' : 'text-gray-400'}`}>{match.team2Score}</span>
+                           <span className={`font-black text-sm ${t2Won ? 'text-white' : 'text-gray-400'}`}>{match.team2Score?.toLocaleString('no-NO')}</span>
                            <span className={`truncate w-24 text-right ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-400'}`}>{match.team2Name || 'Team 2'}</span>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center px-1">
                           <div className="flex justify-center items-center gap-2">
                             <span className="text-gray-400 uppercase tracking-widest text-[9px]">Score:</span>
-                            <span className="font-black text-sm text-white">{match.team1Score}</span>
+                            <span className="font-black text-sm text-white">{match.team1Score?.toLocaleString('no-NO')}</span>
                             {match.waveIndex !== undefined && <span className="text-gray-500 text-[9px] ml-2 uppercase">(Wave {match.waveIndex + 1})</span>}
                           </div>
                           <div className="mt-1">
@@ -244,7 +251,7 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
                 <td className="py-1.5 px-2 font-medium text-gray-300 truncate w-[65%]">
                   <span className={`truncate ${isMVP && !player.isBot ? 'font-bold text-white' : ''}`}>{player.playerName}</span>
                 </td>
-                <td className={`py-1.5 px-1 font-mono text-center font-bold ${textColor}`}>{player.score}</td>
+                <td className={`py-1.5 px-1 font-mono text-center font-bold ${textColor}`}>{player.score?.toLocaleString('no-NO')}</td>
                 <td className="py-1.5 px-1 text-center text-gray-500">{player.kills}K</td>
               </tr>
             );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy, Crosshair } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
@@ -70,7 +71,27 @@ export default function TVPage() {
     return () => clearInterval(interval);
   }, [matches]);
 
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const params = useParams();
+  const router = useRouter();
+  const urlDate = params?.dateSlug?.[0] as string | undefined;
+
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate)) {
+      return urlDate;
+    }
+    return format(new Date(), 'yyyy-MM-dd');
+  });
+
+  useEffect(() => {
+    if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate) && urlDate !== selectedDate) {
+      setSelectedDate(urlDate);
+    }
+  }, [urlDate]);
+
+  const handleDateChange = (newDate: string) => {
+    setSelectedDate(newDate);
+    router.push(`/tv/${newDate}`);
+  };
 
   const sortedMatches = useMemo(() => {
     let filtered = [...matches].filter(m => m.matchStartTimestamp);
@@ -135,14 +156,14 @@ export default function TVPage() {
   const gridColsClass = showSplitScreen ? 'grid-cols-2' : 'grid-cols-1 max-w-7xl mx-auto';
 
   return (
-    <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans p-6 md:p-12 overflow-hidden flex flex-col relative">
+    <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans px-6 md:px-12 pt-4 md:pt-6 pb-6 overflow-hidden flex flex-col relative">
       
       {/* Hidden Date Picker for testing */}
       <div className="absolute top-4 right-4 z-50 opacity-10 hover:opacity-100 transition-opacity">
         <input 
           type="date" 
           value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
+          onChange={(e) => handleDateChange(e.target.value)}
           className="bg-black/50 border border-white/20 text-gray-400 text-xs p-1 rounded outline-none"
         />
       </div>
@@ -170,52 +191,111 @@ export default function TVPage() {
           <div className="flex flex-col h-full overflow-hidden">
             <TdmBanner />
             
-            {/* TDM Leaderboard */}
-            {teamDeathmatchSummary.length > 0 && (
-              <div className="mb-10 shrink-0 mt-8">
-                <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center">Tournament Leaderboard</h2>
-                <div className="flex flex-col gap-3">
-                  {teamDeathmatchSummary.map((team, idx) => {
-                    const placement = idx + 1;
-                    
-                    return (
-                    <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-4 transition-all flex items-center justify-between`}>
-                      {idx === 0 && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] z-10"></div>}
-                      
-                      <div className="flex items-center gap-4 sm:gap-6 z-20 pl-2">
-                        <div className={`text-2xl sm:text-4xl font-black ${idx === 0 ? 'text-yellow-500' : 'text-gray-600'} w-8 text-right`}>{placement}</div>
+            {showSplitScreen ? (
+              <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-8">
+                {/* TDM Leaderboard */}
+                {teamDeathmatchSummary.length > 0 && (
+                  <div className="mb-10 shrink-0">
+                    <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center">Tournament Leaderboard</h2>
+                    <div className="flex flex-col gap-3">
+                      {teamDeathmatchSummary.map((team, idx) => {
+                        const placement = idx + 1;
                         
-                        <div className="flex flex-col items-start text-left">
-                          <div className="flex items-center gap-2 sm:gap-3">
-                            <span className={`text-sm sm:text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
-                              {team.name}
-                            </span>
-                            {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase">Winner</span>}
+                        return (
+                        <div key={team.name} className={`shrink-0 relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-4 transition-all flex items-center justify-between`}>
+                          {idx === 0 && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] z-10"></div>}
+                          
+                          <div className="flex items-center gap-4 sm:gap-6 z-20 pl-2">
+                            <div className={`text-2xl sm:text-4xl font-black ${idx === 0 ? 'text-yellow-500' : 'text-gray-600'} w-8 text-right`}>{placement}</div>
+                            
+                            <div className="flex flex-col items-start text-left">
+                              <div className="flex items-center gap-2 sm:gap-3">
+                                <span className={`text-sm sm:text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
+                                  {team.name}
+                                </span>
+                                {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase">Winner</span>}
+                              </div>
+                              <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1">
+                                {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1">
-                            {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
+
+                          <div className="text-3xl sm:text-5xl font-black text-white tracking-tighter pr-2">
+                            {team.totalScore?.toLocaleString('no-NO')}
                           </div>
                         </div>
-                      </div>
-
-                      <div className="text-3xl sm:text-5xl font-black text-white tracking-tighter pr-2">
-                        {team.totalScore}
-                      </div>
+                      )})}
                     </div>
-                  )})}
+                  </div>
+                )}
+
+                {/* TDM Matches */}
+                <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                   <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center shrink-0">Latest Matches</h2>
+                   <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-4 pb-12">
+                     {teamDeathmatchMatches.map(match => (
+                       <TeamDeathmatchCard key={match.matchId} match={match} />
+                     ))}
+                   </div>
                 </div>
               </div>
+            ) : (
+              <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-6">
+                {/* Full width horizontal Leaderboard */}
+                {teamDeathmatchSummary.length > 0 && (
+                  <div className="mb-8 shrink-0">
+                    <h2 className="text-base font-black tracking-widest uppercase text-white mb-3 text-center">Tournament Leaderboard</h2>
+                    <div className="flex justify-center gap-3 px-4 w-full">
+                      {teamDeathmatchSummary.slice(0, 6).map((team, idx) => {
+                        const placement = idx + 1;
+                        return (
+                          <div key={team.name} className={`flex-1 min-w-0 max-w-[300px] relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-3 flex flex-col items-center justify-center text-center`}>
+                             {idx === 0 && <div className="absolute top-0 left-0 right-0 h-1 bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)] z-10"></div>}
+                             <div className="flex flex-col items-center gap-0.5 mb-2 z-20">
+                                <span className={`text-2xl leading-none font-black ${idx === 0 ? 'text-yellow-500' : 'text-gray-400'}`}>{placement}</span>
+                                <span className={`text-sm font-bold uppercase tracking-widest truncate max-w-full ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>{team.name}</span>
+                             </div>
+                             {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-widest uppercase mb-1 z-20">Winner</span>}
+                             <div className="text-4xl font-black text-white tracking-tighter my-1 z-20">{team.totalScore.toLocaleString('no-NO')}</div>
+                             <div className="text-[9px] text-gray-400 uppercase tracking-widest z-20">{team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                  <div className="grid grid-cols-2 gap-6 flex-1 overflow-hidden px-4">
+                    {/* Left side: Full details of most recent match */}
+                    <div className="flex flex-col h-full min-h-0">
+                      <h2 className="text-base font-black tracking-widest uppercase text-white mb-3 text-center shrink-0">LAST MATCH</h2>
+                      <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden pb-12">
+                        {teamDeathmatchMatches.length > 0 && (
+                           <TeamDeathmatchCard match={teamDeathmatchMatches[0]} />
+                        )}
+                      </div>
+                    </div>
+                    {/* Right side: Compact details of other matches */}
+                    <div className="flex flex-col h-full min-h-0">
+                      <h2 className="text-base font-black tracking-widest uppercase text-white mb-3 text-center shrink-0">LATEST MATCHES</h2>
+                      <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-3 pb-12 pr-2">
+                      {teamDeathmatchMatches.length > 1 ? (
+                        teamDeathmatchMatches.slice(1).map(match => (
+                           <CompactTdmMatchCard key={match.matchId} match={match} />
+                        ))
+                      ) : (
+                        <div className="h-full flex items-center justify-center border border-white/5 bg-white/5 rounded-lg text-gray-500 text-xs font-bold uppercase tracking-widest">
+                          No more matches today
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </div>
             )}
-
-            {/* TDM Matches */}
-            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-               <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center shrink-0">Latest Matches</h2>
-               <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-4 pb-12">
-                 {teamDeathmatchMatches.map(match => (
-                   <TeamDeathmatchCard key={match.matchId} match={match} />
-                 ))}
-               </div>
-            </div>
           </div>
         )}
 
@@ -227,7 +307,7 @@ export default function TVPage() {
             {/* Survival Leaderboard */}
             {survivalTeamSummary.length > 0 && (
               <div className="mb-10 shrink-0 mt-8">
-                <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center">Top Teams</h2>
+                <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center">TOP TEAMS TODAY</h2>
                 <div className="bg-[#0a0505] border border-red-900/30 rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -253,7 +333,7 @@ export default function TVPage() {
                               </div>
                             </td>
                             <td className="py-2 px-2 font-mono text-center font-bold text-white">{match.waveIndex !== undefined ? match.waveIndex + 1 : '-'}</td>
-                            <td className="py-2 px-2 font-mono text-center font-bold text-white">{match.team1Score}</td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-white">{match.team1Score?.toLocaleString('no-NO')}</td>
                           </tr>
                         )})}
                       </tbody>
@@ -322,7 +402,7 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
             <span className={`truncate ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
             <span className="shrink-0 text-[8px] bg-blue-500/20 border border-blue-500/30 px-1 py-0.5 rounded text-blue-300">BLUE</span>
           </div>
-          <div className={`text-5xl font-black mt-2 z-10 ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score}</div>
+          <div className={`text-5xl font-black mt-2 z-10 ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score?.toLocaleString('no-NO')}</div>
         </div>
         
         <div className="text-gray-600 font-black text-sm uppercase tracking-widest">VS</div>
@@ -334,7 +414,7 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
             <span className={`truncate ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Team 2'}</span>
             <span className="shrink-0 text-[8px] bg-orange-500/20 border border-orange-500/30 px-1 py-0.5 rounded text-orange-300">ORANGE</span>
           </div>
-          <div className={`text-5xl font-black mt-2 z-10 ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score}</div>
+          <div className={`text-5xl font-black mt-2 z-10 ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score?.toLocaleString('no-NO')}</div>
         </div>
       </div>
       <div className="px-4 pb-4 flex gap-4 flex-1 min-h-0 overflow-hidden">
@@ -378,7 +458,7 @@ function SurvivalCard({ match }: { match: MatchData }) {
         <div className="flex flex-col items-center">
           <span className="text-red-500 font-bold uppercase tracking-widest text-sm">Survival Mode {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}</span>
           {match.waveIndex !== undefined && <span className="text-5xl font-black text-white mt-2">Wave {match.waveIndex + 1}</span>}
-          <span className="text-xs text-red-500/70 uppercase mt-2">Team Score: <span className="text-red-400 font-bold">{match.team1Score}</span></span>
+          <span className="text-xs text-red-500/70 uppercase mt-2">Team Score: <span className="text-red-400 font-bold">{match.team1Score?.toLocaleString('no-NO')}</span></span>
         </div>
       </div>
       <div className="px-4 pb-4 flex gap-4 flex-1 min-h-0 overflow-hidden mt-4">
@@ -399,24 +479,66 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
   return (
     <div className="bg-white/5 rounded-md overflow-hidden h-full border border-white/5">
       <table className="w-full text-left table-fixed">
+        <thead className="bg-black/20 border-b border-white/5">
+          <tr>
+            <th className="py-1 px-2 text-[8px] font-bold text-gray-500 uppercase tracking-widest text-left w-[46%]">Player</th>
+            <th className="py-1 px-1 text-[8px] font-bold text-gray-500 uppercase tracking-widest text-center w-[22%]">Score</th>
+            <th className="py-1 px-1 text-[8px] font-bold text-gray-500 uppercase tracking-widest text-center w-[16%]">Kills</th>
+            <th className="py-1 px-1 text-[8px] font-bold text-gray-500 uppercase tracking-widest text-center w-[16%]">Deaths</th>
+          </tr>
+        </thead>
         <tbody className="divide-y divide-white/5 text-[10px]">
           {sortedStats.slice(0, 4).map((player, idx) => {
             const isMVP = !isSurvival && idx === 0 && player.score > 0;
             return (
               <tr key={idx} className={`${isMVP && !player.isBot ? rowHighlight : player.isBot ? 'opacity-70 italic' : ''}`}>
-                <td className="py-1.5 px-2 font-medium text-gray-300 truncate w-[60%]">
-                  <div className="flex items-center gap-1 w-full truncate">
+                <td className="py-1.5 px-2 font-medium text-gray-300 truncate">
+                  <div className="flex items-center gap-1.5 w-full truncate">
                     <span className={`truncate ${isMVP && !player.isBot ? 'font-bold text-white' : ''}`}>{player.playerName}</span>
-                    {isMVP && !player.isBot && <span className={`shrink-0 text-[6px] px-1 rounded uppercase tracking-wider font-bold ${mvpBadge}`}>MVP</span>}
+                    {isMVP && !player.isBot && <span className={`shrink-0 text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold ${mvpBadge}`}>MVP</span>}
                   </div>
                 </td>
-                <td className={`py-1.5 px-1 font-mono text-center font-bold ${textColor}`}>{player.score}</td>
-                <td className="py-1.5 px-1 text-center text-gray-500">{player.kills}K</td>
+                <td className={`py-1.5 px-1 font-mono text-center font-bold ${textColor}`}>{player.score?.toLocaleString('no-NO')}</td>
+                <td className="py-1.5 px-1 font-mono text-center text-gray-300 font-bold">{player.kills}</td>
+                <td className="py-1.5 px-1 font-mono text-center text-gray-400 font-bold">{player.deaths}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function CompactTdmMatchCard({ match }: { match: MatchData }) {
+  const team1Won = match.team1Score > match.team2Score;
+  const team2Won = match.team2Score > match.team1Score;
+  const duration = getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp);
+  const time = match.matchStartTimestamp ? format(parseISO(match.matchStartTimestamp), 'HH:mm') : '';
+
+  return (
+    <div className="bg-[#121212] border border-white/5 rounded-lg overflow-hidden flex items-center p-3 relative">
+      <div className="w-12 sm:w-16 shrink-0 flex flex-col items-center justify-center border-r border-white/5 pr-2 sm:pr-3">
+        <div className="text-white font-bold text-[10px] sm:text-sm">{time}</div>
+        {duration && <div className="text-[7px] sm:text-[9px] text-gray-500 uppercase tracking-widest">{duration}</div>}
+      </div>
+      <div className="flex-1 flex justify-between items-center pl-3 sm:pl-4 pr-1 sm:pr-2">
+        <div className="flex items-center gap-2 sm:gap-3 w-[40%]">
+          <span className={`text-[10px] sm:text-xs font-bold uppercase truncate ${team1Won ? 'text-blue-400' : 'text-gray-400'}`}>{match.team1Name || 'Team 1'}</span>
+          {team1Won && <span className="bg-blue-600 text-white text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Win</span>}
+        </div>
+        
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0 font-black text-sm sm:text-xl">
+          <span className={team1Won ? 'text-white' : 'text-gray-500'}>{match.team1Score?.toLocaleString('no-NO')}</span>
+          <span className="text-gray-700 text-[10px] sm:text-sm">VS</span>
+          <span className={team2Won ? 'text-white' : 'text-gray-500'}>{match.team2Score?.toLocaleString('no-NO')}</span>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3 w-[40%] justify-end">
+          {team2Won && <span className="bg-orange-600 text-white text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Win</span>}
+          <span className={`text-[10px] sm:text-xs font-bold uppercase truncate text-right ${team2Won ? 'text-orange-400' : 'text-gray-400'}`}>{match.team2Name || 'Team 2'}</span>
+        </div>
+      </div>
     </div>
   );
 }
