@@ -156,7 +156,7 @@ export default function TVPage() {
   const gridColsClass = showSplitScreen ? 'grid-cols-2' : 'grid-cols-1 w-full';
 
   return (
-    <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans px-6 md:px-12 pt-4 md:pt-6 pb-6 overflow-hidden flex flex-col relative">
+    <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans px-6 md:px-12 pt-2 md:pt-3 pb-2 overflow-hidden flex flex-col relative">
       
       {/* Hidden Date Picker for testing */}
       <div className="absolute top-4 right-4 z-50 opacity-10 hover:opacity-100 transition-opacity">
@@ -244,8 +244,8 @@ export default function TVPage() {
               <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-6">
                 {/* Full width horizontal Leaderboard */}
                 {teamDeathmatchSummary.length > 0 && (
-                  <div className="mb-8 shrink-0">
-                    <h2 className="text-2xl font-black tracking-widest uppercase text-white mb-6 text-center">Tournament Leaderboard</h2>
+                  <div className="mb-3 shrink-0">
+                    <h2 className="text-2xl font-black tracking-widest uppercase text-white mb-2 text-center">Tournament Leaderboard</h2>
                     <div className="flex justify-center gap-3 px-4 w-full">
                       {teamDeathmatchSummary.slice(0, 6).map((team, idx) => {
                         const placement = idx + 1;
@@ -267,10 +267,10 @@ export default function TVPage() {
                 )}
                 
                 <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-                  <div className="grid grid-cols-2 gap-6 flex-1 overflow-hidden px-4">
+                  <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden px-4">
                     {/* Left side: Full details of most recent match */}
                     <div className="flex flex-col h-full min-h-0">
-                      <h2 className="text-2xl font-black tracking-widest uppercase text-white mb-6 text-center shrink-0">LAST MATCH</h2>
+                      <h2 className="text-2xl font-black tracking-widest uppercase text-white mb-2 text-center shrink-0">LAST MATCH</h2>
                       <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden pb-12">
                         {teamDeathmatchMatches.length > 0 && (
                            <TeamDeathmatchCard match={teamDeathmatchMatches[0]} />
@@ -279,8 +279,8 @@ export default function TVPage() {
                     </div>
                     {/* Right side: Compact details of other matches */}
                     <div className="flex flex-col h-full min-h-0">
-                      <h2 className="text-2xl font-black tracking-widest uppercase text-white mb-6 text-center shrink-0">LATEST MATCHES</h2>
-                      <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-3 pb-12 pr-2">
+                      <h2 className="text-2xl font-black tracking-widest uppercase text-white mb-2 text-center shrink-0">LATEST MATCHES</h2>
+                      <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-2 pb-12 pr-2">
                       {teamDeathmatchMatches.length > 1 ? (
                         teamDeathmatchMatches.slice(1).map(match => (
                            <CompactTdmMatchCard key={match.matchId} match={match} />
@@ -372,7 +372,7 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
 
   return (
     <div className="bg-[#121212] rounded-xl border border-white/10 overflow-hidden shadow-xl flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#0D0D0D] shrink-0">
+      <div className="flex items-center justify-between p-2 px-4 border-b border-white/10 bg-[#0D0D0D] shrink-0">
         <div className="flex items-center gap-4">
           <span className="text-gray-400 font-bold text-xl tracking-wider">
             {format(parseISO(match.matchStartTimestamp), 'HH:mm')}
@@ -394,30 +394,30 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
           </div>
         </div>
       </div>
-      <div className="p-6 flex justify-between items-center gap-6 shrink-0">
+      <div className="p-3 flex justify-between items-center gap-6 shrink-0">
         {/* Team 1 (Blue) */}
-        <div className={`flex-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'} rounded-xl p-4 pt-8 flex flex-col items-center relative overflow-hidden transition-all`}>
+        <div className={`flex-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'} rounded-xl p-3 pt-6 flex flex-col items-center relative overflow-hidden transition-all`}>
           {team1Won && <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs font-black px-4 py-1.5 rounded-bl-xl shadow-md tracking-widest uppercase">Winner</div>}
           <div className="text-blue-400 font-bold uppercase text-xl flex items-center justify-center gap-2 z-10 w-full truncate mt-1">
             <span className={`truncate ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
             <span className="shrink-0 text-[10px] bg-blue-500/20 border border-blue-500/30 px-2 py-1 rounded text-blue-300">BLUE</span>
           </div>
-          <div className={`text-7xl font-black mt-3 z-10 ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score?.toLocaleString('no-NO')}</div>
+          <div className={`text-7xl font-black mt-1 z-10 ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score?.toLocaleString('no-NO')}</div>
         </div>
         
         <div className="text-gray-600 font-black text-2xl uppercase tracking-widest">VS</div>
         
         {/* Team 2 (Orange) */}
-        <div className={`flex-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'} rounded-xl p-4 pt-8 flex flex-col items-center relative overflow-hidden transition-all`}>
+        <div className={`flex-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'} rounded-xl p-3 pt-6 flex flex-col items-center relative overflow-hidden transition-all`}>
           {team2Won && <div className="absolute top-0 right-0 bg-orange-500 text-white text-xs font-black px-4 py-1.5 rounded-bl-xl shadow-md tracking-widest uppercase">Winner</div>}
           <div className="text-orange-400 font-bold uppercase text-xl flex items-center justify-center gap-2 z-10 w-full truncate mt-1">
             <span className={`truncate ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Team 2'}</span>
             <span className="shrink-0 text-[10px] bg-orange-500/20 border border-orange-500/30 px-2 py-1 rounded text-orange-300">ORANGE</span>
           </div>
-          <div className={`text-7xl font-black mt-3 z-10 ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score?.toLocaleString('no-NO')}</div>
+          <div className={`text-7xl font-black mt-1 z-10 ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score?.toLocaleString('no-NO')}</div>
         </div>
       </div>
-      <div className="px-4 pb-4 flex gap-4 flex-1 min-h-0 overflow-hidden">
+      <div className="px-3 pb-3 flex gap-3 flex-1 min-h-0 overflow-hidden">
           <div className="flex-1 min-w-0">
             <MiniTeamTable stats={match.playerStats.filter(p => p.team === 1)} color="blue" />
           </div>
@@ -481,10 +481,10 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
       <table className="w-full text-left table-fixed">
         <thead className="bg-black/20 border-b border-white/5">
           <tr>
-            <th className="py-2 px-3 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-left w-[46%]">Player</th>
-            <th className="py-2 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[22%]">Score</th>
-            <th className="py-2 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[16%]">Kills</th>
-            <th className="py-2 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[16%]">Deaths</th>
+            <th className="py-1 px-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-left w-[46%]">Player</th>
+            <th className="py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[22%]">Score</th>
+            <th className="py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[16%]">Kills</th>
+            <th className="py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[16%]">Deaths</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5 text-sm">
@@ -492,15 +492,15 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
             const isMVP = !isSurvival && idx === 0 && player.score > 0;
             return (
               <tr key={idx} className={`${isMVP && !player.isBot ? rowHighlight : player.isBot ? 'opacity-70 italic' : ''}`}>
-                <td className="py-2 px-3 font-medium text-gray-300 truncate">
+                <td className="py-1 px-2 font-medium text-gray-300 truncate">
                   <div className="flex items-center gap-2 w-full truncate">
                     <span className={`truncate ${isMVP && !player.isBot ? 'font-bold text-white' : ''}`}>{player.playerName}</span>
                     {isMVP && !player.isBot && <span className={`shrink-0 text-[10px] px-2 py-1 rounded uppercase tracking-wider font-bold ${mvpBadge}`}>MVP</span>}
                   </div>
                 </td>
-                <td className={`py-2 px-1 font-mono text-center font-bold ${textColor}`}>{player.score?.toLocaleString('no-NO')}</td>
-                <td className="py-2 px-1 font-mono text-center text-gray-300 font-bold">{player.kills}</td>
-                <td className="py-2 px-1 font-mono text-center text-gray-400 font-bold">{player.deaths}</td>
+                <td className={`py-1 px-1 font-mono text-center font-bold ${textColor}`}>{player.score?.toLocaleString('no-NO')}</td>
+                <td className="py-1 px-1 font-mono text-center text-gray-300 font-bold">{player.kills}</td>
+                <td className="py-1 px-1 font-mono text-center text-gray-400 font-bold">{player.deaths}</td>
               </tr>
             );
           })}
