@@ -168,12 +168,12 @@ export default function TVPage() {
         />
       </div>
       {liveMatch && (
-        <div className="mb-8 shrink-0 flex flex-col items-center">
-           <h1 className="text-2xl font-black tracking-widest uppercase text-red-500 mb-4 flex items-center justify-center gap-3 animate-pulse">
-             <div className="w-4 h-4 bg-red-500 rounded-full shadow-[0_0_15px_rgba(239,68,68,1)]"></div>
+        <div className="mb-8 shrink-0 flex flex-col items-center w-full">
+           <h1 className="text-3xl font-black tracking-widest uppercase text-red-500 mb-4 flex items-center justify-center gap-3 animate-pulse">
+             <div className="w-5 h-5 bg-red-500 rounded-full shadow-[0_0_15px_rgba(239,68,68,1)]"></div>
              LIVE MATCH
            </h1>
-           <div className="w-full max-w-4xl mx-auto shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-xl relative">
+           <div className="w-full max-w-6xl mx-auto shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-xl relative">
              <div className="absolute inset-0 border-2 border-red-500/50 rounded-xl pointer-events-none z-20"></div>
              {liveMatch.gameMode?.toLowerCase() === 'survival' ? (
                <SurvivalCard match={liveMatch} />
@@ -195,8 +195,8 @@ export default function TVPage() {
               <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-8">
                 {/* TDM Leaderboard */}
                 {teamDeathmatchSummary.length > 0 && (
-                  <div className="mb-10 shrink-0">
-                    <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center">Tournament Leaderboard</h2>
+                  <div className="mb-8 shrink-0">
+                    <h2 className="text-xl font-black tracking-widest uppercase text-gray-500 mb-3 text-center">Tournament Leaderboard</h2>
                     <div className="flex flex-col gap-3">
                       {teamDeathmatchSummary.map((team, idx) => {
                         const placement = idx + 1;
@@ -206,22 +206,22 @@ export default function TVPage() {
                           {idx === 0 && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] z-10"></div>}
                           
                           <div className="flex items-center gap-4 sm:gap-6 z-20 pl-2">
-                            <div className={`text-2xl sm:text-4xl font-black ${idx === 0 ? 'text-yellow-500' : 'text-gray-600'} w-8 text-right`}>{placement}</div>
+                            <div className={`text-4xl font-black ${idx === 0 ? 'text-yellow-500' : 'text-gray-600'} w-10 text-right`}>{placement}</div>
                             
                             <div className="flex flex-col items-start text-left">
-                              <div className="flex items-center gap-2 sm:gap-3">
-                                <span className={`text-sm sm:text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
+                              <div className="flex items-center gap-3">
+                                <span className={`text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
                                   {team.name}
                                 </span>
-                                {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase">Winner</span>}
+                                {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-xs font-black px-2 py-1 rounded shadow-sm tracking-widest uppercase">Winner</span>}
                               </div>
-                              <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1">
+                              <div className="text-xs text-gray-400 uppercase tracking-widest mt-1">
                                 {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
                               </div>
                             </div>
                           </div>
 
-                          <div className="text-3xl sm:text-5xl font-black text-white tracking-tighter pr-2">
+                          <div className="text-6xl font-black text-white tracking-tighter pr-4">
                             {team.totalScore?.toLocaleString('no-NO')}
                           </div>
                         </div>
@@ -232,8 +232,8 @@ export default function TVPage() {
 
                 {/* TDM Matches */}
                 <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-                   <h2 className="text-sm font-bold tracking-widest uppercase text-gray-500 mb-4 text-center shrink-0">Latest Matches</h2>
-                   <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-4 pb-12">
+                   <h2 className="text-xl font-black tracking-widest uppercase text-gray-500 mb-3 text-center shrink-0">Latest Matches</h2>
+                   <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-3 pb-12">
                      {teamDeathmatchMatches.map(match => (
                        <TeamDeathmatchCard key={match.matchId} match={match} />
                      ))}
@@ -356,9 +356,9 @@ export default function TVPage() {
         )}
         
         {sortedMatches.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center text-gray-500 h-64 border border-dashed border-white/10 rounded-2xl">
-            <Trophy className="w-16 h-16 mb-4 opacity-50" />
-            <p className="text-xl font-bold uppercase tracking-widest">Waiting for matches...</p>
+          <div className="col-span-full flex flex-col items-center justify-center text-gray-500 h-64 border border-dashed border-white/10 rounded-2xl mx-8">
+            <Trophy className="w-24 h-24 mb-6 opacity-50" />
+            <p className="text-3xl font-black uppercase tracking-widest">Waiting for matches...</p>
           </div>
         )}
       </div>
