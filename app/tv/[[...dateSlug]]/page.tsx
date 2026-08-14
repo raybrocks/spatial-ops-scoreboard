@@ -153,7 +153,7 @@ export default function TVPage() {
   if (!isLoaded) return <div className="h-screen bg-[#0A0A0A] flex items-center justify-center text-gray-500 font-bold tracking-widest uppercase">Loading Live Data...</div>;
 
   const showSplitScreen = teamDeathmatchMatches.length > 0 && survivalMatches.length > 0;
-  const gridColsClass = showSplitScreen ? 'grid-cols-2' : 'grid-cols-1 max-w-7xl mx-auto';
+  const gridColsClass = showSplitScreen ? 'grid-cols-2' : 'grid-cols-1 w-full';
 
   return (
     <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans px-6 md:px-12 pt-4 md:pt-6 pb-6 overflow-hidden flex flex-col relative">
