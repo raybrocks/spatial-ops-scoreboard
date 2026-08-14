@@ -2,3 +2,6 @@
 - The user identifies as a "vibe-coder" learning fullstack.
 - IMPORTANT: When requiring the user to perform manual actions outside the code (e.g., in Firebase, Supabase, Github, Vercel), provide DETAILED, step-by-step descriptions of exactly how to perform those actions. Do not assume prior knowledge of these platforms.
 - GIT: NEVER push to Github automatically. Only push when the user explicitly says so (e.g. "push to git"). Wait for permission before pushing.
+
+# Project Constraints
+- DEV SERVER: Always run the development server on port 3070 (e.g., `npx next dev -p 3070`).

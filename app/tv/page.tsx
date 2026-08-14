@@ -177,7 +177,6 @@ export default function TVPage() {
                 <div className="flex flex-col gap-3">
                   {teamDeathmatchSummary.map((team, idx) => {
                     const placement = idx + 1;
-                    const suffix = placement === 1 ? 'ST' : placement === 2 ? 'ND' : placement === 3 ? 'RD' : 'TH';
                     
                     return (
                     <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-4 transition-all flex items-center justify-between`}>
@@ -190,9 +189,6 @@ export default function TVPage() {
                           <div className="flex items-center gap-2 sm:gap-3">
                             <span className={`text-sm sm:text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
                               {team.name}
-                            </span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-500/20 text-gray-400'}`}>
-                              {placement}{suffix}
                             </span>
                             {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase">Winner</span>}
                           </div>
@@ -245,16 +241,12 @@ export default function TVPage() {
                       <tbody className="divide-y divide-white/5 text-xs">
                         {survivalTeamSummary.slice(0, 4).map((match, idx) => {
                           const placement = idx + 1;
-                          const suffix = placement === 1 ? 'ST' : placement === 2 ? 'ND' : placement === 3 ? 'RD' : 'TH';
                           return (
                           <tr key={match.matchId} className={`group hover:bg-[#1f0a0a] transition-colors ${idx === 0 ? 'bg-[#240a0a]' : 'bg-[#0a0505]'}`}>
                             <td className="py-2 px-3 font-medium text-gray-300 flex flex-col justify-center border-r border-transparent">
                               <div className="flex items-center gap-2">
                                 <span className="text-red-600 w-3 text-right text-[10px]">{idx + 1}.</span>
                                 <span className={`truncate ${idx === 0 ? 'text-red-500 font-bold' : ''}`}>{match.team1Name || 'Unknown Team'}</span>
-                                <span className={`text-[8px] px-1 py-0.5 rounded font-bold ${idx === 0 ? 'bg-red-500/20 text-red-500' : 'bg-red-900/40 text-red-500/70'}`}>
-                                  {placement}{suffix}
-                                </span>
                               </div>
                               <div className="ml-5 mt-1">
                                 <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} />

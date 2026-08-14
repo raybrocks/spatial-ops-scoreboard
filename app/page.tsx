@@ -377,15 +377,15 @@ export default function Home() {
       `}} />
 
       {/* Header */}
-      <header className="border-b border-white/10 bg-[#0D0D0D] p-4 print:bg-transparent print:border-0 print:p-0 print:mb-6">
-        <div className="max-w-6xl mx-auto relative flex flex-col md:flex-row justify-end items-center gap-4 min-h-[48px]">
-          <div className="md:absolute md:left-1/2 md:-translate-x-1/2 flex items-center justify-center">
-            <img src="/logo.svg" alt="KRS VR Arena" className="h-10 sm:h-12 print:h-16 object-contain" />
+      <header className="border-b border-white/10 bg-[#0D0D0D] p-3 sm:p-4 print:bg-transparent print:border-0 print:p-0 print:mb-6">
+        <div className="max-w-6xl mx-auto relative flex flex-row justify-end items-center gap-2 sm:gap-4 min-h-[40px] sm:min-h-[48px] w-full">
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+            <img src="/logo.svg" alt="KRS VR Arena" className="h-8 sm:h-12 print:h-16 object-contain pointer-events-auto" />
           </div>
           
-          <div className="flex gap-3 no-print z-10">
+          <div className="flex gap-2 sm:gap-3 no-print z-10 ml-auto">
             {isAdminMode && (
-              <div className="flex gap-3 no-print">
+              <div className="flex gap-2 sm:gap-3 no-print">
                 <button
                   onClick={selectAllForPrint}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
@@ -549,7 +549,6 @@ export default function Home() {
                   <div className="flex flex-col gap-3 print:gap-2">
                     {tdmDailySummary.map((team, idx) => {
                       const placement = idx + 1;
-                      const suffix = placement === 1 ? 'ST' : placement === 2 ? 'ND' : placement === 3 ? 'RD' : 'TH';
                       
                       return (
                       <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-4 print:bg-transparent print:border-gray-300 print:p-2 transition-all flex items-center justify-between`}>
@@ -562,9 +561,6 @@ export default function Home() {
                             <div className="flex items-center gap-2 sm:gap-3">
                               <span className={`text-sm sm:text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
                                 {team.name}
-                              </span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-500/20 text-gray-400'}`}>
-                                {placement}{suffix}
                               </span>
                               {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase print:hidden">Winner</span>}
                             </div>
@@ -608,7 +604,6 @@ export default function Home() {
                               <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
                                 <span className="text-gray-500 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
                                 <span className={`truncate ${idx === 0 ? 'text-yellow-500 font-bold' : ''}`}>{player.name}</span>
-                                {idx === 0 && <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-1 py-0.5 rounded print:bg-gray-200 print:text-black">1ST</span>}
                               </td>
                               <td className="py-2 px-2 text-gray-500 text-[9px] uppercase tracking-widest truncate print:text-gray-600 print:py-1 print:px-1">{player.teamName}</td>
                               <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score}</td>
@@ -650,16 +645,12 @@ export default function Home() {
                       <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
                         {survivalTeamSummary.slice(0, 10).map((match, idx) => {
                           const placement = idx + 1;
-                          const suffix = placement === 1 ? 'ST' : placement === 2 ? 'ND' : placement === 3 ? 'RD' : 'TH';
                           return (
                           <tr key={match.matchId} className={`group hover:bg-[#1f0a0a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#240a0a]' : 'bg-[#0a0505]'}`}>
                             <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex flex-col justify-center sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
                               <div className="flex items-center gap-2">
                                 <span className="text-red-600 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
                                 <span className={`truncate ${idx === 0 ? 'text-red-500 font-bold' : ''}`}>{match.team1Name || 'Unknown Team'}</span>
-                                <span className={`text-[8px] px-1 py-0.5 rounded font-bold print:bg-gray-200 print:text-black ${idx === 0 ? 'bg-red-500/20 text-red-500' : 'bg-red-900/40 text-red-500/70'}`}>
-                                  {placement}{suffix}
-                                </span>
                               </div>
                               <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} className="ml-5 mt-1 self-start" />
                             </td>
