@@ -170,12 +170,17 @@ export default function TVPage() {
         />
       </div>
       {liveMatch && (
-        <div className="mb-8 shrink-0 flex flex-col items-center w-full">
-           <h1 className="text-3xl font-black tracking-widest uppercase text-red-500 mb-4 flex items-center justify-center gap-3 animate-pulse">
-             <div className="w-5 h-5 bg-red-500 rounded-full shadow-[0_0_15px_rgba(239,68,68,1)]"></div>
-             LIVE MATCH
-           </h1>
-           <div className="w-full max-w-6xl mx-auto shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-xl relative">
+        <div className={`shrink-0 flex flex-col items-center w-full ${sortedMatches.length === 0 ? 'h-full flex-1 justify-center' : 'mb-8'}`}>
+           <div className={`flex flex-col items-center ${sortedMatches.length === 0 ? 'mb-8' : 'mb-4'}`}>
+             <h1 className={`${sortedMatches.length === 0 ? 'text-4xl' : 'text-3xl'} font-black tracking-widest uppercase text-red-500 flex items-center justify-center gap-3 mb-3`}>
+               <div className="w-5 h-5 bg-red-500 rounded-full shadow-[0_0_15px_rgba(239,68,68,1)] animate-pulse"></div>
+               LIVE MATCH
+             </h1>
+             <div className={`${sortedMatches.length === 0 ? 'text-7xl' : 'text-5xl'} font-mono font-black text-white bg-red-950/80 border-2 border-red-500/50 px-8 py-2 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.4)] tracking-tighter`}>
+               <LiveClock matchStartTimestamp={liveMatch.matchStartTimestamp} />
+             </div>
+           </div>
+           <div className={`w-full ${sortedMatches.length === 0 ? 'max-w-[1600px] scale-110 origin-center' : 'max-w-6xl'} mx-auto shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-xl relative`}>
              <div className="absolute inset-0 border-2 border-red-500/50 rounded-xl pointer-events-none z-20"></div>
              {liveMatch.gameMode?.toLowerCase() === 'survival' ? (
                <SurvivalCard match={liveMatch} isLive />
@@ -186,7 +191,7 @@ export default function TVPage() {
         </div>
       )}
 
-      <div className={`w-full grid ${gridColsClass} gap-12 h-full flex-1 overflow-hidden`}>
+      <div className={`w-full grid ${gridColsClass} gap-12 h-full flex-1 overflow-hidden ${(sortedMatches.length === 0 && liveMatch) ? 'hidden' : ''}`}>
         
         {/* TEAM DEATHMATCH SECTION */}
         {teamDeathmatchMatches.length > 0 && (
@@ -357,7 +362,7 @@ export default function TVPage() {
           </div>
         )}
         
-        {sortedMatches.length === 0 && (
+        {!liveMatch && sortedMatches.length === 0 && (
           <div className="col-span-full flex flex-col items-center justify-center text-gray-500 h-64 border border-dashed border-white/10 rounded-2xl mx-8">
             <Trophy className="w-24 h-24 mb-6 opacity-50" />
             <p className="text-3xl font-black uppercase tracking-widest">Waiting for matches...</p>
