@@ -176,9 +176,9 @@ export default function TVPage() {
            <div className="w-full max-w-6xl mx-auto shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-xl relative">
              <div className="absolute inset-0 border-2 border-red-500/50 rounded-xl pointer-events-none z-20"></div>
              {liveMatch.gameMode?.toLowerCase() === 'survival' ? (
-               <SurvivalCard match={liveMatch} />
+               <SurvivalCard match={liveMatch} isLive />
              ) : (
-               <TeamDeathmatchCard match={liveMatch} />
+               <TeamDeathmatchCard match={liveMatch} isLive />
              )}
            </div>
         </div>
@@ -366,7 +366,31 @@ export default function TVPage() {
   );
 }
 
-function TeamDeathmatchCard({ match }: { match: MatchData }) {
+function LiveClock({ matchStartTimestamp }: { matchStartTimestamp?: string }) {
+  const [elapsed, setElapsed] = useState('');
+
+  useEffect(() => {
+    if (!matchStartTimestamp) return;
+    
+    const start = parseISO(matchStartTimestamp).getTime();
+    
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, now - start);
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setElapsed(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+    };
+    
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [matchStartTimestamp]);
+
+  return <>{elapsed || '0:00'}</>;
+}
+
+function TeamDeathmatchCard({ match, isLive }: { match: MatchData, isLive?: boolean }) {
   const team1Won = match.team1Score > match.team2Score;
   const team2Won = match.team2Score > match.team1Score;
 
@@ -386,7 +410,12 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
                 {formatLifeMode(match.lifeMode)}
               </span>
             )}
-            {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp) && (
+            {isLive ? (
+              <span className="px-3 py-1 rounded bg-red-500/20 border border-red-500/30 text-sm text-red-400 font-bold tracking-widest flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                <LiveClock matchStartTimestamp={match.matchStartTimestamp} />
+              </span>
+            ) : getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp) && (
               <span className="px-3 py-1 rounded bg-white/5 border border-white/10 text-sm text-gray-400 uppercase tracking-widest">
                 {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}
               </span>
@@ -429,7 +458,7 @@ function TeamDeathmatchCard({ match }: { match: MatchData }) {
   );
 }
 
-function SurvivalCard({ match }: { match: MatchData }) {
+function SurvivalCard({ match, isLive }: { match: MatchData, isLive?: boolean }) {
   return (
     <div className="bg-[#0a0505] rounded-xl border border-red-900/30 overflow-hidden shadow-xl flex flex-col">
       <div className="flex items-center justify-between p-3 border-b border-red-900/30 bg-[#1a0a0a] shrink-0">
@@ -446,7 +475,12 @@ function SurvivalCard({ match }: { match: MatchData }) {
                 {formatLifeMode(match.lifeMode)}
               </span>
             )}
-            {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp) && (
+            {isLive ? (
+              <span className="px-2 py-0.5 rounded bg-red-500/20 border border-red-500/30 text-[10px] text-red-400 font-bold tracking-widest flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                <LiveClock matchStartTimestamp={match.matchStartTimestamp} />
+              </span>
+            ) : getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp) && (
               <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-400 uppercase tracking-widest">
                 {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}
               </span>
@@ -456,7 +490,9 @@ function SurvivalCard({ match }: { match: MatchData }) {
       </div>
       <div className="p-4 flex justify-center items-center gap-4 shrink-0 bg-[#1a0a0a] border-b border-red-900/30">
         <div className="flex flex-col items-center">
-          <span className="text-red-500 font-bold uppercase tracking-widest text-sm">Survival Mode {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}</span>
+          <span className="text-red-500 font-bold uppercase tracking-widest text-sm">
+            Survival Mode {isLive ? <LiveClock matchStartTimestamp={match.matchStartTimestamp} /> : getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}
+          </span>
           {match.waveIndex !== undefined && <span className="text-5xl font-black text-white mt-2">Wave {match.waveIndex + 1}</span>}
           <span className="text-xs text-red-500/70 uppercase mt-2">Team Score: <span className="text-red-400 font-bold">{match.team1Score?.toLocaleString('no-NO')}</span></span>
         </div>
