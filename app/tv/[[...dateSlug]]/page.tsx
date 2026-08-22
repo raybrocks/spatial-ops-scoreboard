@@ -84,8 +84,10 @@ export default function TVPage() {
 
   useEffect(() => {
     if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate) && urlDate !== selectedDate) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedDate(urlDate);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlDate]);
 
   const handleDateChange = (newDate: string) => {
