@@ -280,8 +280,8 @@ export default function Home() {
     const summary: Record<string, { matches: number, totalScore: number, wins: number }> = {};
     
     tdmMatches.forEach(match => {
-      const t1 = match.team1Name || 'Team 1';
-      const t2 = match.team2Name || 'Team 2';
+      const t1 = (match.team1Name || 'Team 1').toUpperCase();
+      const t2 = (match.team2Name || 'Team 2').toUpperCase();
       
       if (!summary[t1]) summary[t1] = { matches: 0, totalScore: 0, wins: 0 };
       if (!summary[t2]) summary[t2] = { matches: 0, totalScore: 0, wins: 0 };
@@ -316,7 +316,7 @@ export default function Home() {
         }
         
         if (!summary[player.playerName].teamName) {
-          summary[player.playerName].teamName = player.team === 1 ? (match.team1Name || 'Team 1') : (match.team2Name || 'Team 2');
+          summary[player.playerName].teamName = player.team === 1 ? (match.team1Name || 'Team 1').toUpperCase() : (match.team2Name || 'Team 2').toUpperCase();
         }
 
         summary[player.playerName].score += player.score;
