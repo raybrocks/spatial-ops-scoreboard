@@ -2,7 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css'; // Global styles
 
 export const metadata: Metadata = {
-  title: 'VR Arcade Scoreboard',
+  title: 'Scoreboard Krs VR Arena',
   description: 'Mixed Reality Shooter Scoreboard and Leaderboard',
 };
 
