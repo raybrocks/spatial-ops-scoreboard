@@ -54,7 +54,6 @@ export default function Home() {
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const [showMatchDetails, setShowMatchDetails] = useState(false);
   const params = useParams();
   const router = useRouter();
   const urlDate = params?.dateSlug?.[0] as string | undefined;
@@ -272,17 +271,13 @@ export default function Home() {
     return groupMatchesByTournament(dayMatches, dayTournaments);
   }, [dayMatches, dayTournaments]);
 
-  // Default auto-expand latest tournament
+  // Default auto-expand latest (active) tournament on load or date switch
   useEffect(() => {
     if (tournamentGroups.length > 0) {
-      setExpandedTournaments((prev) => {
-        if (prev.size === 0) {
-          return new Set([tournamentGroups[tournamentGroups.length - 1].id]);
-        }
-        return prev;
-      });
+      const latestId = tournamentGroups[tournamentGroups.length - 1].id;
+      setExpandedTournaments(new Set([latestId]));
     }
-  }, [tournamentGroups]);
+  }, [selectedDate, dayTournaments.length]);
 
   const toggleTournamentExpand = (id: string) => {
     setExpandedTournaments((prev) => {
@@ -558,18 +553,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* Global Match Details Toggle Button */}
-        {dayMatches.length > 0 && (
-          <div className="mb-6 flex justify-end no-print">
-            <button
-              onClick={() => setShowMatchDetails(!showMatchDetails)}
-              className="bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold transition-colors"
-            >
-              {showMatchDetails ? 'Skjul individuelle kampkort' : 'Vis individuelle kampkort'}
-            </button>
-          </div>
-        )}
-
         {/* Tournament Accordions */}
         <div className="space-y-6">
           {tournamentGroups.map((group, groupIdx) => {
@@ -651,7 +634,6 @@ export default function Home() {
                       cancelEdit={cancelEdit}
                       removeMatch={removeMatch}
                       survivalHighscores={survivalHighscores}
-                      showMatchDetails={showMatchDetails}
                     />
                   </div>
                 )}
@@ -816,7 +798,6 @@ function TournamentContent({
   cancelEdit,
   removeMatch,
   survivalHighscores,
-  showMatchDetails,
 }: {
   group: TournamentGroup;
   isAdminMode: boolean;
@@ -830,8 +811,8 @@ function TournamentContent({
   cancelEdit: () => void;
   removeMatch: (id: string) => void;
   survivalHighscores: Map<string, HighscoreLevel>;
-  showMatchDetails: boolean;
 }) {
+  const [showMatchDetails, setShowMatchDetails] = useState(false);
   const matches = group.matches;
 
   const { tdmMatches, survivalMatches } = useMemo(() => {
@@ -1068,8 +1049,28 @@ function TournamentContent({
         )}
       </div>
 
+      {/* Show / Hide Match Details Button for this tournament */}
+      {matches.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-white/5 flex flex-col items-center no-print">
+          <button
+            onClick={() => setShowMatchDetails(!showMatchDetails)}
+            className={`flex items-center gap-2.5 px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+              showMatchDetails
+                ? 'bg-purple-950/30 text-purple-300 border border-purple-500/30 hover:bg-purple-900/30'
+                : 'bg-purple-950/15 hover:bg-purple-900/25 text-purple-300/80 hover:text-purple-200 border border-purple-500/20 hover:border-purple-500/35'
+            }`}
+          >
+            <span>{showMatchDetails ? 'Hide Match Details' : 'Show Match Details'}</span>
+            <span className="bg-purple-950/40 text-purple-300/80 px-2 py-0.5 rounded text-[10px] font-mono border border-purple-500/20">
+              {matches.length} {matches.length === 1 ? 'kamp' : 'kamper'}
+            </span>
+            {showMatchDetails ? <ChevronUp className="w-3.5 h-3.5 text-purple-400/70" /> : <ChevronDown className="w-3.5 h-3.5 text-purple-400/70" />}
+          </button>
+        </div>
+      )}
+
       {/* Matches List */}
-      <div className={showMatchDetails ? "block mt-8" : "hidden print:block"}>
+      <div className={showMatchDetails ? "block mt-6" : "hidden print:block mt-6"}>
         <h3 className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-4 border-b border-white/10 pb-2">
           Individuelle kampkort ({matches.length})
         </h3>
