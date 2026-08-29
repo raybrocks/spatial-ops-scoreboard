@@ -1138,30 +1138,34 @@ function TournamentContent({
                     {/* Team 1 */}
                     <div className={`flex-1 rounded-lg p-2 pt-5 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 print:pt-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'}`}>
                       {team1Won && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden">Winner</div>}
-                      <div className="text-blue-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
+                      <div className="text-blue-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
                         {editingTeam?.matchId === match.matchId && editingTeam.team === 1 ? (
-                           <div className="flex items-center gap-1 z-10">
+                           <div className="flex items-center gap-1 z-20">
                              <input 
                                autoFocus
                                value={editingName} 
                                onChange={(e) => setEditingName(e.target.value)} 
                                onKeyDown={(e) => { if (e.key === 'Enter') saveTeamName(); if (e.key === 'Escape') cancelEdit(); }}
-                               className="bg-black/80 border border-blue-500/50 rounded px-1 w-16 md:w-20 text-center text-blue-400 focus:outline-none focus:border-blue-400"
+                               className="bg-black/90 border border-blue-500 rounded px-1.5 py-0.5 w-20 sm:w-24 text-center text-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-400 text-xs"
                              />
-                             <button onClick={saveTeamName} className="text-green-400 hover:text-green-300"><Check className="w-3 h-3" /></button>
-                             <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-300"><X className="w-3 h-3" /></button>
+                             <button onClick={saveTeamName} className="p-1 rounded bg-green-950/80 border border-green-500/50 text-green-400 hover:text-green-300" title="Lagre"><Check className="w-3 h-3" /></button>
+                             <button onClick={cancelEdit} className="p-1 rounded bg-red-950/80 border border-red-500/50 text-gray-400 hover:text-gray-300" title="Avbryt"><X className="w-3 h-3" /></button>
                            </div>
                         ) : (
-                          <>
-                            <span className={`truncate max-w-[100px] print:max-w-full ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            <span className={`truncate max-w-[90px] sm:max-w-[120px] print:max-w-full ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
                             <span className="shrink-0 text-[7px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1 py-0.5 rounded tracking-widest print-color-blue print:text-[5px]">BLUE</span>
                             {team1Won && <span className="hidden print:inline-block text-[6px] print:bg-gray-200 print:text-black px-1 py-0.5 rounded">WIN</span>}
                             {isAdminMode && (
-                              <button onClick={() => handleEditTeamName(match.matchId, 1, match.team1Name || 'Team 1')} className="opacity-0 group-hover:opacity-100 absolute -right-1 md:-right-2 top-0 text-blue-400/50 hover:text-blue-400 transition-opacity p-0.5 bg-blue-900/50 rounded no-print">
-                                <Edit2 className="w-2.5 h-2.5" />
+                              <button 
+                                onClick={() => handleEditTeamName(match.matchId, 1, match.team1Name || 'Team 1')} 
+                                className="text-blue-300 hover:text-white bg-blue-900/60 hover:bg-blue-800/80 border border-blue-500/40 p-1 rounded transition-colors no-print shrink-0 cursor-pointer shadow-sm"
+                                title="Rediger lagnavn"
+                              >
+                                <Edit2 className="w-3 h-3" />
                               </button>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
                       <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score?.toLocaleString('no-NO')}</div>
@@ -1172,30 +1176,34 @@ function TournamentContent({
                     {/* Team 2 */}
                     <div className={`flex-1 rounded-lg p-2 pt-5 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 print:pt-1 ${team2Won ? 'bg-orange-900/30 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-orange-950/10 border border-orange-500/10 opacity-70'}`}>
                       {team2Won && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden">Winner</div>}
-                      <div className="text-orange-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative group min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
+                      <div className="text-orange-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
                         {editingTeam?.matchId === match.matchId && editingTeam.team === 2 ? (
-                           <div className="flex items-center gap-1 z-10">
+                           <div className="flex items-center gap-1 z-20">
                              <input 
                                autoFocus
                                value={editingName} 
                                onChange={(e) => setEditingName(e.target.value)} 
                                onKeyDown={(e) => { if (e.key === 'Enter') saveTeamName(); if (e.key === 'Escape') cancelEdit(); }}
-                               className="bg-black/80 border border-orange-500/50 rounded px-1 w-16 md:w-20 text-center text-orange-400 focus:outline-none focus:border-orange-400"
+                               className="bg-black/90 border border-orange-500 rounded px-1.5 py-0.5 w-20 sm:w-24 text-center text-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-400 text-xs"
                              />
-                             <button onClick={saveTeamName} className="text-green-400 hover:text-green-300"><Check className="w-3 h-3" /></button>
-                             <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-300"><X className="w-3 h-3" /></button>
+                             <button onClick={saveTeamName} className="p-1 rounded bg-green-950/80 border border-green-500/50 text-green-400 hover:text-green-300" title="Lagre"><Check className="w-3 h-3" /></button>
+                             <button onClick={cancelEdit} className="p-1 rounded bg-red-950/80 border border-red-500/50 text-gray-400 hover:text-gray-300" title="Avbryt"><X className="w-3 h-3" /></button>
                            </div>
                         ) : (
-                          <>
-                            <span className={`truncate max-w-[100px] print:max-w-full ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Team 2'}</span>
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            <span className={`truncate max-w-[90px] sm:max-w-[120px] print:max-w-full ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Team 2'}</span>
                             <span className="shrink-0 text-[7px] bg-orange-500/20 text-orange-300 border border-orange-500/30 px-1 py-0.5 rounded tracking-widest print-color-orange print:text-[5px]">ORANGE</span>
                             {team2Won && <span className="hidden print:inline-block text-[6px] print:bg-gray-200 print:text-black px-1 py-0.5 rounded">WIN</span>}
                             {isAdminMode && (
-                              <button onClick={() => handleEditTeamName(match.matchId, 2, match.team2Name || 'Team 2')} className="opacity-0 group-hover:opacity-100 absolute -right-1 md:-right-2 top-0 text-orange-400/50 hover:text-orange-400 transition-opacity p-0.5 bg-orange-900/50 rounded no-print">
-                                <Edit2 className="w-2.5 h-2.5" />
+                              <button 
+                                onClick={() => handleEditTeamName(match.matchId, 2, match.team2Name || 'Team 2')} 
+                                className="text-orange-300 hover:text-white bg-orange-900/60 hover:bg-orange-800/80 border border-orange-500/40 p-1 rounded transition-colors no-print shrink-0 cursor-pointer shadow-sm"
+                                title="Rediger lagnavn"
+                              >
+                                <Edit2 className="w-3 h-3" />
                               </button>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
                       <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score?.toLocaleString('no-NO')}</div>

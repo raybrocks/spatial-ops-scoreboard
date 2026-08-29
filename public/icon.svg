@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="gold-grad" x1="0" y1="0" x2="0" y2="100%">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="40%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+  </defs>
+  <!-- Base Plate -->
+  <rect x="5" y="25" width="22" height="4" rx="1.5" fill="#B45309" stroke="#78350F" stroke-width="0.8"/>
+  <rect x="6.5" y="25.5" width="19" height="1.2" rx="0.5" fill="#FDE047" opacity="0.7"/>
+  
+  <!-- Base Pedestal -->
+  <path d="M9 20 L23 20 L21 25 L11 25 Z" fill="#92400E"/>
+  
+  <!-- Stem Column -->
+  <rect x="13.5" y="16" width="5" height="4.5" rx="0.5" fill="url(#gold-grad)"/>
+  
+  <!-- Left Handle -->
+  <path d="M8 6 C3.5 6 3.5 13 8 13" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M8 6 C4.5 6 4.5 13 8 13" fill="none" stroke="#FDE047" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Right Handle -->
+  <path d="M24 6 C28.5 6 28.5 13 24 13" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M24 6 C27.5 6 27.5 13 24 13" fill="none" stroke="#FDE047" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Cup Body -->
+  <path d="M7 4 H25 V10 C25 15 20 18 16 18 C12 18 7 15 7 10 Z" fill="url(#gold-grad)" stroke="#B45309" stroke-width="0.8"/>
+  
+  <!-- Cup Rim Highlight -->
+  <ellipse cx="16" cy="4.2" rx="8.5" ry="1.2" fill="#FEF08A"/>
+  
+  <!-- Center Star Badge -->
+  <path d="M16 7.5 L17 10 L19.8 10 L17.5 11.7 L18.4 14.3 L16 12.7 L13.6 14.3 L14.5 11.7 L12.2 10 L15 10 Z" fill="#FFFFFF"/>
+</svg>
