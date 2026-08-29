@@ -1,13 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
+import { useTournaments } from '@/hooks/use-tournaments';
+import { getTournamentsForDate, getTournamentTitle, groupMatchesByTournament } from '@/lib/tournaments';
 import { getSurvivalHighscores } from '@/lib/survival-highscores';
 import { HighscoreBadge } from '@/components/HighscoreBadge';
-import { PlayerStat } from '@/types/match';
+import { PlayerStat, MatchData } from '@/types/match';
 
 const formatGameMode = (mode?: string) => {
   if (!mode) return '';
@@ -39,7 +41,9 @@ const getMatchDuration = (start?: string, end?: string) => {
 };
 
 export default function SpectatorPage() {
-  const { matches, isLoaded } = useMatchData();
+  const { matches, isLoaded: matchesLoaded } = useMatchData();
+  const { tournaments, isLoaded: tournamentsLoaded } = useTournaments();
+  const isLoaded = matchesLoaded && tournamentsLoaded;
 
   const params = useParams();
   const urlDate = params?.dateSlug?.[0] as string | undefined;
@@ -51,21 +55,53 @@ export default function SpectatorPage() {
     return format(new Date(), 'yyyy-MM-dd');
   }, [urlDate]);
 
-  const survivalHighscores = useMemo(() => getSurvivalHighscores(matches), [matches]);
+  const dayTournaments = useMemo(() => {
+    return getTournamentsForDate(tournaments, todayDate);
+  }, [tournaments, todayDate]);
+
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string>('latest');
+
+  const dayMatches = useMemo(() => {
+    return matches.filter(
+      (m) => m.matchStartTimestamp && format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === todayDate
+    );
+  }, [matches, todayDate]);
+
+  const tournamentGroups = useMemo(() => {
+    return groupMatchesByTournament(dayMatches, dayTournaments);
+  }, [dayMatches, dayTournaments]);
+
+  const activeTournamentId = useMemo(() => {
+    if (selectedTournamentId === 'all') return 'all';
+    if (selectedTournamentId === 'latest') {
+      if (dayTournaments.length > 0) {
+        return dayTournaments[dayTournaments.length - 1].id;
+      }
+      return 'all';
+    }
+    const exists = dayTournaments.some((t) => t.id === selectedTournamentId);
+    if (exists) return selectedTournamentId;
+    if (dayTournaments.length > 0) return dayTournaments[dayTournaments.length - 1].id;
+    return 'all';
+  }, [selectedTournamentId, dayTournaments]);
 
   const sortedMatches = useMemo(() => {
-    let filtered = [...matches].filter(m => m.matchStartTimestamp);
-    filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === todayDate);
+    let filtered: MatchData[] = [];
+    if (activeTournamentId === 'all' || dayTournaments.length === 0) {
+      filtered = [...dayMatches];
+    } else {
+      const activeGroup = tournamentGroups.find((g) => g.id === activeTournamentId);
+      filtered = activeGroup ? [...activeGroup.matches] : [];
+    }
     return filtered.sort((a, b) => new Date(b.matchStartTimestamp).getTime() - new Date(a.matchStartTimestamp).getTime());
-  }, [matches, todayDate]);
+  }, [dayMatches, tournamentGroups, activeTournamentId, dayTournaments]);
+
+  const survivalHighscores = useMemo(() => getSurvivalHighscores(matches), [matches]);
 
   const dailySummary = useMemo(() => {
     const summary: Record<string, { matches: number, totalScore: number, wins: number }> = {};
-    
-    let allFiltered = [...matches].filter(m => m.matchStartTimestamp);
-    allFiltered = allFiltered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === todayDate);
 
-    allFiltered.forEach(match => {
+    sortedMatches.forEach(match => {
       const t1 = (match.team1Name || 'Team 1').toUpperCase();
       const t2 = (match.team2Name || 'Team 2').toUpperCase();
       
@@ -84,7 +120,7 @@ export default function SpectatorPage() {
     return Object.entries(summary)
       .map(([name, stats]) => ({ name, ...stats }))
       .sort((a, b) => b.totalScore - a.totalScore);
-  }, [matches, todayDate]);
+  }, [sortedMatches]);
 
   if (!isLoaded) return <div className="h-screen w-screen bg-[#0A0A0A]"></div>;
 
@@ -94,15 +130,34 @@ export default function SpectatorPage() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#0A0A0A] text-gray-200 font-sans pointer-events-none relative">
       
-      {/* Top Bar: Overall Score */}
+      {/* Top Bar: Overall Score & Tournament Selector */}
       {dailySummary.length > 0 && (
         <div className="absolute top-0 left-0 w-full p-4 flex justify-center items-start">
-          <div className="bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-8">
+          <div className="bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-8 pointer-events-auto">
             <div className="flex items-center gap-4 pr-8 border-r border-white/10">
                <Trophy className="w-10 h-10 text-yellow-500" />
                <div>
                  <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">Leaderboard</div>
                  <div className="text-base font-black text-white">{format(new Date(), 'dd.MM.yyyy')}</div>
+                 {dayTournaments.length > 0 && (
+                   <select
+                     value={selectedTournamentId}
+                     onChange={(e) => setSelectedTournamentId(e.target.value)}
+                     className="mt-1 bg-white/10 border border-white/20 text-yellow-400 text-xs py-0.5 px-1.5 rounded outline-none cursor-pointer"
+                   >
+                     <option value="latest" className="bg-[#121212] text-yellow-400 font-bold">
+                       ★ Aktiv turnering
+                     </option>
+                     {dayTournaments.map((t) => (
+                       <option key={t.id} value={t.id} className="bg-[#121212] text-white">
+                         {getTournamentTitle(t)}
+                       </option>
+                     ))}
+                     <option value="all" className="bg-[#121212] text-gray-400">
+                       Hele dagen (Alle)
+                     </option>
+                   </select>
+                 )}
                </div>
             </div>
             

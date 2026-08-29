@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy, Crosshair } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
+import { useTournaments } from '@/hooks/use-tournaments';
+import { getTournamentsForDate, getTournamentTitle, groupMatchesByTournament } from '@/lib/tournaments';
 import { getSurvivalHighscores } from '@/lib/survival-highscores';
 import { HighscoreBadge } from '@/components/HighscoreBadge';
 import { TdmBanner, SurvivalBanner } from '@/components/SectionTitles';
@@ -40,7 +42,9 @@ const getMatchDuration = (start?: string, end?: string) => {
 };
 
 export default function TVPage() {
-  const { matches, isLoaded } = useMatchData();
+  const { matches, isLoaded: matchesLoaded } = useMatchData();
+  const { tournaments, isLoaded: tournamentsLoaded } = useTournaments();
+  const isLoaded = matchesLoaded && tournamentsLoaded;
   const [liveMatch, setLiveMatch] = useState<MatchData | null>(null);
 
   useEffect(() => {
@@ -95,12 +99,50 @@ export default function TVPage() {
     router.push(`/tv/${newDate}`);
   };
 
+  const dayTournaments = useMemo(() => {
+    return getTournamentsForDate(tournaments, selectedDate);
+  }, [tournaments, selectedDate]);
+
+  // Selected tournament ID: 'latest' (default), 'all', or a specific tournament ID
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string>('latest');
+
+  // Group matches of the day into tournaments
+  const dayMatches = useMemo(() => {
+    return matches.filter(
+      (m) => m.matchStartTimestamp && format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === selectedDate
+    );
+  }, [matches, selectedDate]);
+
+  const tournamentGroups = useMemo(() => {
+    return groupMatchesByTournament(dayMatches, dayTournaments);
+  }, [dayMatches, dayTournaments]);
+
+  const activeTournamentId = useMemo(() => {
+    if (selectedTournamentId === 'all') return 'all';
+    if (selectedTournamentId === 'latest') {
+      if (dayTournaments.length > 0) {
+        return dayTournaments[dayTournaments.length - 1].id;
+      }
+      return 'all';
+    }
+    // If a specific ID is selected, verify it exists
+    const exists = dayTournaments.some((t) => t.id === selectedTournamentId);
+    if (exists) return selectedTournamentId;
+    if (dayTournaments.length > 0) return dayTournaments[dayTournaments.length - 1].id;
+    return 'all';
+  }, [selectedTournamentId, dayTournaments]);
+
   const sortedMatches = useMemo(() => {
-    let filtered = [...matches].filter(m => m.matchStartTimestamp);
-    filtered = filtered.filter(m => format(parseISO(m.matchStartTimestamp), 'yyyy-MM-dd') === selectedDate);
+    let filtered: MatchData[] = [];
+    if (activeTournamentId === 'all' || dayTournaments.length === 0) {
+      filtered = [...dayMatches];
+    } else {
+      const activeGroup = tournamentGroups.find((g) => g.id === activeTournamentId);
+      filtered = activeGroup ? [...activeGroup.matches] : [];
+    }
     // Sort NEWEST FIRST for TV display so latest are at the top
     return filtered.sort((a, b) => new Date(b.matchStartTimestamp).getTime() - new Date(a.matchStartTimestamp).getTime());
-  }, [matches, selectedDate]);
+  }, [dayMatches, tournamentGroups, activeTournamentId, dayTournaments]);
 
   const { teamDeathmatchMatches, survivalMatches } = useMemo(() => {
     const tdm: MatchData[] = [];
@@ -160,8 +202,27 @@ export default function TVPage() {
   return (
     <div className="h-screen bg-[#0A0A0A] text-gray-200 font-sans px-6 md:px-12 pt-2 md:pt-3 pb-2 overflow-hidden flex flex-col relative">
       
-      {/* Hidden Date Picker for testing */}
-      <div className="absolute top-4 right-4 z-50 opacity-10 hover:opacity-100 transition-opacity">
+      {/* Hidden Date Picker & Tournament selector for testing/switching */}
+      <div className="absolute top-4 right-4 z-50 opacity-10 hover:opacity-100 transition-opacity flex items-center gap-2">
+        {dayTournaments.length > 0 && (
+          <select
+            value={selectedTournamentId}
+            onChange={(e) => setSelectedTournamentId(e.target.value)}
+            className="bg-black/90 border border-white/30 text-gray-200 text-xs py-1 px-2 rounded outline-none cursor-pointer shadow-lg"
+          >
+            <option value="latest" className="bg-[#121212] text-yellow-400 font-bold">
+              ★ Aktiv (Nyeste)
+            </option>
+            {dayTournaments.map((t) => (
+              <option key={t.id} value={t.id} className="bg-[#121212] text-white">
+                {getTournamentTitle(t)}
+              </option>
+            ))}
+            <option value="all" className="bg-[#121212] text-gray-400">
+              Hele dagen (Alle)
+            </option>
+          </select>
+        )}
         <input 
           type="date" 
           value={selectedDate}
