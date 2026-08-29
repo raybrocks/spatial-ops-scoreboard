@@ -931,26 +931,30 @@ function TournamentContent({
                     const placement = idx + 1;
                     
                     return (
-                    <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-4 print:bg-transparent print:border-gray-300 print:p-2 transition-all flex items-center justify-between`}>
+                    <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-yellow-900/30 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-xl p-3 sm:p-4 print:bg-transparent print:border-gray-300 print:p-2 transition-all flex items-center justify-between gap-2 sm:gap-4`}>
                       {idx === 0 && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] z-10 print:hidden"></div>}
                       
-                      <div className="flex items-center gap-4 sm:gap-6 z-20 pl-2">
-                        <div className={`text-2xl sm:text-4xl font-black ${idx === 0 ? 'text-yellow-500' : 'text-gray-600'} w-8 text-right`}>{placement}</div>
+                      <div className="flex items-center gap-3 sm:gap-5 z-20 pl-1 sm:pl-2 min-w-0 flex-1">
+                        <div className={`text-2xl sm:text-4xl font-black ${idx === 0 ? 'text-yellow-500' : 'text-gray-600'} w-6 sm:w-8 shrink-0 text-right`}>{placement}</div>
                         
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2 sm:gap-3">
-                            <span className={`text-sm sm:text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
-                              {team.name}
-                            </span>
-                            {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase print:hidden">Winner</span>}
+                        <div className="flex flex-col min-w-0 flex-1 justify-center">
+                          {idx === 0 && (
+                            <div className="mb-1">
+                              <span className="bg-yellow-500 text-yellow-950 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase inline-block print:hidden">
+                                Winner
+                              </span>
+                            </div>
+                          )}
+                          <div className={`text-sm sm:text-lg md:text-xl font-bold uppercase tracking-wider truncate ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
+                            {team.name}
                           </div>
-                          <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1 print:text-black print:text-[8px]">
+                          <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-0.5 print:text-black print:text-[8px] truncate">
                             {team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-3xl sm:text-5xl font-black text-white tracking-tighter pr-2 print:text-black print:text-2xl">
+                      <div className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tighter shrink-0 pr-1 sm:pr-2 print:text-black print:text-2xl text-right">
                         {team.totalScore?.toLocaleString('no-NO')}
                       </div>
                     </div>
