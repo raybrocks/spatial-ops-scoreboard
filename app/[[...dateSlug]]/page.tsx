@@ -389,55 +389,56 @@ export default function Home() {
       `}} />
 
       {/* Header (No Print) */}
-      <header className="border-b border-white/10 bg-[#0D0D0D] p-4 sticky top-0 z-50 no-print">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="border-b border-white/10 bg-[#0D0D0D] p-3 sm:p-4 sticky top-0 z-50 no-print print:bg-transparent print:border-0 print:p-0 print:mb-6">
+        <div className="max-w-6xl mx-auto relative flex flex-row justify-end items-center gap-2 sm:gap-4 min-h-[40px] sm:min-h-[48px] w-full">
+          {/* Centered Logo */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
-              src="/assets/krs-vr-logo-v2.png" 
+              src="/logo.svg" 
               alt="KRS VR Arena" 
-              className="h-9 md:h-11 w-auto object-contain cursor-pointer transition-transform hover:scale-105" 
+              className="h-8 sm:h-11 print:h-16 object-contain pointer-events-auto cursor-pointer transition-transform hover:scale-105" 
               onClick={() => router.push('/')}
             />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 z-10 ml-auto">
             {isAdminMode && (
-              <button
-                onClick={handleOpenCreateModal}
-                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-yellow-950 px-3 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(234,179,8,0.2)]"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Start ny turnering</span>
-              </button>
-            )}
-
-            {dayMatches.length > 0 && (
-              <div className="flex items-center gap-2">
+              <>
                 <button
-                  onClick={() => {
-                    setIsPrintMode(true);
-                    setTimeout(() => {
-                      window.print();
-                      setIsPrintMode(false);
-                    }, 100);
-                  }}
-                  disabled={selectedForPrint.size === 0}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
-                    selectedForPrint.size > 0
-                      ? 'bg-gray-600 hover:bg-gray-700 text-white'
-                      : 'bg-white/5 text-white/30 cursor-not-allowed'
-                  }`}
+                  onClick={handleOpenCreateModal}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-yellow-950 px-3 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(234,179,8,0.2)]"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span className="hidden sm:inline">Print ({selectedForPrint.size})</span>
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Start ny turnering</span>
                 </button>
-              </div>
+
+                {dayMatches.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setIsPrintMode(true);
+                      setTimeout(() => {
+                        window.print();
+                        setIsPrintMode(false);
+                      }, 100);
+                    }}
+                    disabled={selectedForPrint.size === 0}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors ${
+                      selectedForPrint.size > 0
+                        ? 'bg-gray-600 hover:bg-gray-700 text-white'
+                        : 'bg-white/5 text-white/30 cursor-not-allowed'
+                    }`}
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span className="hidden sm:inline">Print ({selectedForPrint.size})</span>
+                  </button>
+                )}
+              </>
             )}
 
             <button
               onClick={handleAdminToggle}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs uppercase tracking-widest transition-colors ${isAdminMode ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}`}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs uppercase tracking-widest transition-colors ${isAdminMode ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'}`}
             >
               {isAdminMode ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
               <span className="hidden sm:inline">{isAdminMode ? 'Operator' : 'Customer'}</span>
