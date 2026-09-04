@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Trophy } from 'lucide-react';
@@ -44,6 +44,35 @@ export default function SpectatorPage() {
   const { matches, isLoaded: matchesLoaded } = useMatchData();
   const { tournaments, isLoaded: tournamentsLoaded } = useTournaments();
   const isLoaded = matchesLoaded && tournamentsLoaded;
+  const [liveMatch, setLiveMatch] = useState<MatchData | null>(null);
+
+  useEffect(() => {
+    const fetchLiveMatch = async () => {
+      try {
+        const res = await fetch('http://localhost:7770/matchsnapshot');
+        if (!res.ok) {
+          setLiveMatch(null);
+          return;
+        }
+        const data = await res.json();
+        if (data && data.matchId) {
+          const isFinished = matches.some((m) => m.matchId === data.matchId);
+          if (isFinished) {
+            setLiveMatch(null);
+          } else {
+            setLiveMatch(data);
+          }
+        } else {
+          setLiveMatch(null);
+        }
+      } catch (err) {
+        setLiveMatch(null);
+      }
+    };
+
+    const interval = setInterval(fetchLiveMatch, 1000);
+    return () => clearInterval(interval);
+  }, [matches]);
 
   const params = useParams();
   const urlDate = params?.dateSlug?.[0] as string | undefined;
@@ -124,8 +153,9 @@ export default function SpectatorPage() {
 
   if (!isLoaded) return <div className="h-screen w-screen bg-[#0A0A0A]"></div>;
 
-  const latestMatch = sortedMatches.length > 0 ? sortedMatches[0] : null;
-  const previousMatches = sortedMatches.slice(1, 7); // Show up to 6 previous matches
+  const displayedMatch = liveMatch || (sortedMatches.length > 0 ? sortedMatches[0] : null);
+  const isLive = !!liveMatch;
+  const previousMatches = isLive ? sortedMatches.slice(0, 6) : sortedMatches.slice(1, 7);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#0A0A0A] text-gray-200 font-sans pointer-events-none relative">
@@ -175,65 +205,91 @@ export default function SpectatorPage() {
         </div>
       )}
 
-      {/* Right Sidebar: Details last match & Results all matches */}
+      {/* Right Sidebar: Details ongoing/last match & Results all matches */}
       <div className="absolute top-28 right-6 bottom-6 w-[340px] flex flex-col gap-4">
         
-        {/* Latest Match Details */}
-        {latestMatch && (
-          <div className="bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col shrink-0">
-             <div className="bg-gray-950/40 p-3 text-center border-b border-gray-500/20">
-               <span className="text-xs text-gray-400 uppercase tracking-widest font-bold">Latest Match</span>
+        {/* Live or Latest Match Details */}
+        {displayedMatch && (
+          <div className={`backdrop-blur-md border rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col shrink-0 ${isLive ? 'bg-black/85 border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.25)]' : 'bg-black/70 border-white/10'}`}>
+             <div className={`p-3 text-center border-b flex items-center justify-between ${isLive ? 'bg-red-950/60 border-red-500/30' : 'bg-gray-950/40 border-gray-500/20'}`}>
+               <div className="flex items-center gap-2">
+                 {isLive && <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,1)]"></span>}
+                 <span className={`text-xs uppercase tracking-widest font-black ${isLive ? 'text-red-400' : 'text-gray-400'}`}>
+                   {isLive ? 'Live Match' : 'Latest Match'}
+                 </span>
+               </div>
+               {isLive && (
+                 <div className="bg-black/60 border border-red-500/40 px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold text-white tracking-wider flex items-center gap-1.5">
+                   <LiveClock matchStartTimestamp={displayedMatch.matchStartTimestamp} />
+                 </div>
+               )}
              </div>
              
              <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-400 font-bold text-xs tracking-wider">{format(parseISO(latestMatch.matchStartTimestamp), 'HH:mm')}</span>
+                  <span className="text-gray-400 font-bold text-xs tracking-wider">{format(parseISO(displayedMatch.matchStartTimestamp), 'HH:mm')}</span>
                   <div className="flex gap-2">
-                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-400 uppercase tracking-widest">{formatGameMode(latestMatch.gameMode)}</span>
-                    {latestMatch.gameMode?.toLowerCase() === 'survival' && latestMatch.lifeMode && (
-                      <span className="px-2 py-0.5 rounded bg-gray-900/30 border border-gray-500/20 text-[10px] text-gray-300 uppercase tracking-widest">{formatLifeMode(latestMatch.lifeMode)}</span>
+                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-400 uppercase tracking-widest">{formatGameMode(displayedMatch.gameMode)}</span>
+                    {displayedMatch.gameMode?.toLowerCase() === 'survival' && displayedMatch.lifeMode && (
+                      <span className="px-2 py-0.5 rounded bg-gray-900/30 border border-gray-500/20 text-[10px] text-gray-300 uppercase tracking-widest">{formatLifeMode(displayedMatch.lifeMode)}</span>
                     )}
-                    {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp) && (
+                    {!isLive && getMatchDuration(displayedMatch.matchStartTimestamp, displayedMatch.lastUpdateTimestamp) && (
                       <span className="text-[10px] text-gray-500 uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
-                        {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp)}
+                        {getMatchDuration(displayedMatch.matchStartTimestamp, displayedMatch.lastUpdateTimestamp)}
                       </span>
                     )}
                   </div>
                 </div>
                 
-                {latestMatch.gameMode?.toLowerCase() === 'survival' ? (
+                {displayedMatch.gameMode?.toLowerCase() === 'survival' ? (
                   <>
-                     <div className="flex justify-center items-center mb-5 bg-gray-950/20 border border-gray-500/20 rounded-xl p-3 flex-col">
-                       <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Survival {getMatchDuration(latestMatch.matchStartTimestamp, latestMatch.lastUpdateTimestamp)}</span>
-                       {latestMatch.waveIndex !== undefined && <span className="text-3xl font-black text-white mt-1">Wave {latestMatch.waveIndex + 1}</span>}
-                       <span className="text-[10px] text-gray-500 uppercase mt-1">Team Score: <span className="text-white font-bold">{latestMatch.team1Score?.toLocaleString('no-NO')}</span></span>
-                       <div className="mt-2">
-                         <HighscoreBadge level={survivalHighscores.get(latestMatch.matchId) || 'NONE'} />
-                       </div>
+                     <div className={`flex justify-center items-center mb-5 border rounded-xl p-3 flex-col ${isLive ? 'bg-red-950/20 border-red-500/30' : 'bg-gray-950/20 border-gray-500/20'}`}>
+                       <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">
+                         Survival {!isLive && getMatchDuration(displayedMatch.matchStartTimestamp, displayedMatch.lastUpdateTimestamp)}
+                       </span>
+                       {displayedMatch.waveIndex !== undefined && <span className="text-3xl font-black text-white mt-1">Wave {displayedMatch.waveIndex + 1}</span>}
+                       <span className="text-[10px] text-gray-500 uppercase mt-1">Team Score: <span className="text-white font-bold">{displayedMatch.team1Score?.toLocaleString('no-NO')}</span></span>
+                       {!isLive && (
+                         <div className="mt-2">
+                           <HighscoreBadge level={survivalHighscores.get(displayedMatch.matchId) || 'NONE'} />
+                         </div>
+                       )}
                      </div>
                     <div className="flex flex-col gap-3">
-                      <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 1)} color="blue" isSurvival={true} />
+                      <MiniTeamTable stats={displayedMatch.playerStats.filter(p => p.team === 1)} color="blue" isSurvival={true} isLive={isLive} />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="flex justify-between items-center mb-5 gap-2">
-                      <div className={`flex flex-col items-center flex-1 min-w-0 rounded-lg p-2 relative overflow-hidden transition-all ${latestMatch.team1Score > latestMatch.team2Score ? 'bg-blue-900/40 border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-blue-950/20 border border-blue-500/10 opacity-70'}`}>
-                         {latestMatch.team1Score > latestMatch.team2Score && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">Win</div>}
-                         <span className={`text-[10px] font-bold uppercase truncate w-full text-center ${latestMatch.team1Score > latestMatch.team2Score ? 'text-white' : 'text-blue-400'}`}>{latestMatch.team1Name || 'Team 1'}</span>
-                         <span className={`text-3xl font-black mt-1 z-10 ${latestMatch.team1Score > latestMatch.team2Score ? 'text-white' : 'text-blue-200/50'}`}>{latestMatch.team1Score?.toLocaleString('no-NO')}</span>
+                      <div className={`flex flex-col items-center flex-1 min-w-0 rounded-lg p-2 relative overflow-hidden transition-all ${
+                        !isLive && displayedMatch.team1Score > displayedMatch.team2Score 
+                          ? 'bg-blue-900/40 border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+                          : isLive
+                          ? 'bg-blue-950/40 border border-blue-500/30'
+                          : 'bg-blue-950/20 border border-blue-500/10 opacity-70'
+                      }`}>
+                         {!isLive && displayedMatch.team1Score > displayedMatch.team2Score && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">Win</div>}
+                         <span className={`text-[10px] font-bold uppercase truncate w-full text-center ${(!isLive && displayedMatch.team1Score > displayedMatch.team2Score) || isLive ? 'text-white' : 'text-blue-400'}`}>{displayedMatch.team1Name || 'Team 1'}</span>
+                         <span className={`text-3xl font-black mt-1 z-10 ${(!isLive && displayedMatch.team1Score > displayedMatch.team2Score) || isLive ? 'text-white' : 'text-blue-200/50'}`}>{displayedMatch.team1Score?.toLocaleString('no-NO')}</span>
                       </div>
                       <div className="text-[10px] font-black text-gray-500 shrink-0">VS</div>
-                      <div className={`flex flex-col items-center flex-1 min-w-0 rounded-lg p-2 relative overflow-hidden transition-all ${latestMatch.team2Score > latestMatch.team1Score ? 'bg-orange-900/40 border-2 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'bg-orange-950/20 border border-orange-500/10 opacity-70'}`}>
-                         {latestMatch.team2Score > latestMatch.team1Score && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">Win</div>}
-                         <span className={`text-[10px] font-bold uppercase truncate w-full text-center ${latestMatch.team2Score > latestMatch.team1Score ? 'text-white' : 'text-orange-400'}`}>{latestMatch.team2Name || 'Team 2'}</span>
-                         <span className={`text-3xl font-black mt-1 z-10 ${latestMatch.team2Score > latestMatch.team1Score ? 'text-white' : 'text-orange-200/50'}`}>{latestMatch.team2Score?.toLocaleString('no-NO')}</span>
+                      <div className={`flex flex-col items-center flex-1 min-w-0 rounded-lg p-2 relative overflow-hidden transition-all ${
+                        !isLive && displayedMatch.team2Score > displayedMatch.team1Score 
+                          ? 'bg-orange-900/40 border-2 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' 
+                          : isLive
+                          ? 'bg-orange-950/40 border border-orange-500/30'
+                          : 'bg-orange-950/20 border border-orange-500/10 opacity-70'
+                      }`}>
+                         {!isLive && displayedMatch.team2Score > displayedMatch.team1Score && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">Win</div>}
+                         <span className={`text-[10px] font-bold uppercase truncate w-full text-center ${(!isLive && displayedMatch.team2Score > displayedMatch.team1Score) || isLive ? 'text-white' : 'text-orange-400'}`}>{displayedMatch.team2Name || 'Team 2'}</span>
+                         <span className={`text-3xl font-black mt-1 z-10 ${(!isLive && displayedMatch.team2Score > displayedMatch.team1Score) || isLive ? 'text-white' : 'text-orange-200/50'}`}>{displayedMatch.team2Score?.toLocaleString('no-NO')}</span>
                       </div>
                     </div>
                     
                     <div className="flex flex-col gap-3">
-                      <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 1)} color="blue" />
-                      <MiniTeamTable stats={latestMatch.playerStats.filter(p => p.team === 2)} color="orange" />
+                      <MiniTeamTable stats={displayedMatch.playerStats.filter(p => p.team === 1)} color="blue" isLive={isLive} />
+                      <MiniTeamTable stats={displayedMatch.playerStats.filter(p => p.team === 2)} color="orange" isLive={isLive} />
                     </div>
                   </>
                 )}
@@ -291,7 +347,31 @@ export default function SpectatorPage() {
   );
 }
 
-function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], color: 'blue' | 'orange', isSurvival?: boolean }) {
+function LiveClock({ matchStartTimestamp }: { matchStartTimestamp?: string }) {
+  const [elapsed, setElapsed] = useState('');
+
+  useEffect(() => {
+    if (!matchStartTimestamp) return;
+    
+    const start = parseISO(matchStartTimestamp).getTime();
+    
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, now - start);
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setElapsed(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+    };
+    
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [matchStartTimestamp]);
+
+  return <>{elapsed || '0:00'}</>;
+}
+
+function MiniTeamTable({ stats, color, isSurvival, isLive }: { stats: PlayerStat[], color: 'blue' | 'orange', isSurvival?: boolean, isLive?: boolean }) {
   const sortedStats = [...stats].sort((a, b) => b.score - a.score);
   const textColor = color === 'blue' ? 'text-blue-400' : 'text-orange-400';
 
@@ -300,7 +380,7 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
       <table className="w-full text-left table-fixed">
         <tbody className="divide-y divide-white/5 text-[10px]">
           {sortedStats.slice(0, 3).map((player, idx) => {
-            const isMVP = !isSurvival && idx === 0 && player.score > 0;
+            const isMVP = !isSurvival && !isLive && idx === 0 && player.score > 0;
             return (
               <tr key={idx} className={player.isBot ? 'opacity-70 italic' : ''}>
                 <td className="py-1.5 px-2 font-medium text-gray-300 truncate w-[65%]">

@@ -275,8 +275,10 @@ export default function Home() {
   useEffect(() => {
     if (tournamentGroups.length > 0) {
       const latestId = tournamentGroups[tournamentGroups.length - 1].id;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExpandedTournaments(new Set([latestId]));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, dayTournaments.length]);
 
   const toggleTournamentExpand = (id: string) => {
