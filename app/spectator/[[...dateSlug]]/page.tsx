@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
-import { Trophy } from 'lucide-react';
+import { Trophy, Flag, Skull, Target } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { useTournaments } from '@/hooks/use-tournaments';
 import { getTournamentsForDate, getTournamentTitle, groupMatchesByTournament } from '@/lib/tournaments';
@@ -17,6 +17,7 @@ const formatGameMode = (mode?: string) => {
   const lower = mode.toLowerCase();
   if (lower === 'teamdeathmatch') displayMode = 'TEAM DEATHMATCH';
   else if (lower === 'freeforall') displayMode = 'FREE FOR ALL';
+  else if (lower === 'capturetheflag') displayMode = 'CAPTURE THE FLAG';
   else displayMode = mode.toUpperCase();
   return displayMode;
 };
@@ -128,27 +129,37 @@ export default function SpectatorPage() {
   const survivalHighscores = useMemo(() => getSurvivalHighscores(matches), [matches]);
 
   const dailySummary = useMemo(() => {
-    const summary: Record<string, { matches: number, totalScore: number, wins: number }> = {};
+    const teamSummary: Record<string, { name: string, totalScore: number, wins: number }> = {};
+    const soloSummary: Record<string, { name: string, totalScore: number, wins: number }> = {};
 
     sortedMatches.forEach(match => {
-      const t1 = (match.team1Name || 'Team 1').toUpperCase();
-      const t2 = (match.team2Name || 'Team 2').toUpperCase();
-      
-      if (!summary[t1]) summary[t1] = { matches: 0, totalScore: 0, wins: 0 };
-      if (!summary[t2]) summary[t2] = { matches: 0, totalScore: 0, wins: 0 };
-      
-      summary[t1].matches += 1;
-      summary[t1].totalScore += match.team1Score;
-      if (match.team1Score > match.team2Score) summary[t1].wins += 1;
-      
-      summary[t2].matches += 1;
-      summary[t2].totalScore += match.team2Score;
-      if (match.team2Score > match.team1Score) summary[t2].wins += 1;
+      const isFfa = match.gameMode?.toLowerCase() === 'freeforall';
+      if (isFfa) {
+        const sorted = [...match.playerStats].sort((a, b) => b.score - a.score);
+        const winnerName = sorted.length > 0 && sorted[0].score > 0 ? sorted[0].playerName : null;
+        match.playerStats.forEach(p => {
+          if (p.isBot) return;
+          if (!soloSummary[p.playerName]) soloSummary[p.playerName] = { name: p.playerName, totalScore: 0, wins: 0 };
+          soloSummary[p.playerName].totalScore += p.score;
+          if (winnerName && p.playerName === winnerName) soloSummary[p.playerName].wins += 1;
+        });
+      } else {
+        const t1 = (match.team1Name || 'Team 1').toUpperCase();
+        const t2 = (match.team2Name || 'Team 2').toUpperCase();
+        
+        if (!teamSummary[t1]) teamSummary[t1] = { name: t1, totalScore: 0, wins: 0 };
+        if (!teamSummary[t2]) teamSummary[t2] = { name: t2, totalScore: 0, wins: 0 };
+        
+        teamSummary[t1].totalScore += match.team1Score;
+        teamSummary[t2].totalScore += match.team2Score;
+        if (match.team1Score > match.team2Score) teamSummary[t1].wins += 1;
+        if (match.team2Score > match.team1Score) teamSummary[t2].wins += 1;
+      }
     });
-    
-    return Object.entries(summary)
-      .map(([name, stats]) => ({ name, ...stats }))
-      .sort((a, b) => b.totalScore - a.totalScore);
+
+    const teamList = Object.values(teamSummary).sort((a, b) => b.totalScore - a.totalScore);
+    if (teamList.length > 0) return teamList;
+    return Object.values(soloSummary).sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.totalScore - a.totalScore);
   }, [sortedMatches]);
 
   if (!isLoaded) return <div className="h-screen w-screen bg-[#0A0A0A]"></div>;
@@ -156,6 +167,15 @@ export default function SpectatorPage() {
   const displayedMatch = liveMatch || (sortedMatches.length > 0 ? sortedMatches[0] : null);
   const isLive = !!liveMatch;
   const previousMatches = isLive ? sortedMatches.slice(0, 6) : sortedMatches.slice(1, 7);
+
+  const isDisplayedSurvival = displayedMatch?.gameMode?.toLowerCase() === 'survival';
+  const isDisplayedCtf = displayedMatch?.gameMode?.toLowerCase() === 'capturetheflag';
+  const isDisplayedFfa = displayedMatch?.gameMode?.toLowerCase() === 'freeforall';
+
+  const ffaSorted = isDisplayedFfa && displayedMatch ? [...displayedMatch.playerStats].sort((a, b) => b.score - a.score) : [];
+  const ffaWinner = ffaSorted[0];
+  const ffaSecond = ffaSorted[1];
+  const ffaThird = ffaSorted[2];
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#0A0A0A] text-gray-200 font-sans pointer-events-none relative">
@@ -241,7 +261,7 @@ export default function SpectatorPage() {
                   </div>
                 </div>
                 
-                {displayedMatch.gameMode?.toLowerCase() === 'survival' ? (
+                {isDisplayedSurvival ? (
                   <>
                      <div className={`flex justify-center items-center mb-5 border rounded-xl p-4 flex-col ${isLive ? 'bg-red-950/20 border-red-500/30' : 'bg-gray-950/20 border-gray-500/20'}`}>
                        <span className="text-gray-300 font-bold uppercase text-xs tracking-widest">
@@ -259,27 +279,68 @@ export default function SpectatorPage() {
                       <MiniTeamTable stats={displayedMatch.playerStats.filter(p => p.team === 1)} color="blue" isSurvival={true} isLive={isLive} />
                     </div>
                   </>
+                ) : isDisplayedFfa ? (
+                  <>
+                    <div className="flex justify-between items-center mb-5 gap-3">
+                      {ffaWinner && (
+                        <div className="flex-1 bg-yellow-950/40 border-2 border-yellow-500/60 rounded-xl p-3 flex flex-col items-center shadow-[0_0_20px_rgba(234,179,8,0.25)]">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded uppercase">1st Winner</span>
+                            <span className="text-base font-black text-white uppercase tracking-wide">{ffaWinner.playerName}</span>
+                          </div>
+                          <div className="text-3xl font-black text-yellow-400 font-mono">
+                            {ffaWinner.score?.toLocaleString('no-NO')} <span className="text-xs font-bold text-yellow-500/80">PTS</span>
+                          </div>
+                          <div className="text-[11px] text-gray-300 mt-1 font-medium">
+                            {ffaWinner.kills} Kills • {ffaWinner.deaths} Deaths • {ffaWinner.assists} AST
+                          </div>
+                          {(ffaSecond || ffaThird) && (
+                            <div className="flex items-center justify-center gap-4 mt-2 pt-2 border-t border-white/10 w-full text-[11px]">
+                              {ffaSecond && (
+                                <span className="text-gray-300">#2 <strong>{ffaSecond.playerName}</strong> ({ffaSecond.score})</span>
+                              )}
+                              {ffaThird && (
+                                <span className="text-gray-400">#3 <strong>{ffaThird.playerName}</strong> ({ffaThird.score})</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <MiniFfaTable stats={displayedMatch.playerStats} />
+                    </div>
+                  </>
                 ) : (
                   <>
                     <div className="flex justify-between items-center mb-5 gap-3">
                       <div className={`flex flex-col items-center flex-1 min-w-0 rounded-xl p-3 relative overflow-hidden transition-all ${
                         !isLive && displayedMatch.team1Score > displayedMatch.team2Score 
-                          ? 'bg-blue-900/40 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)]' 
+                          ? (isDisplayedCtf ? 'bg-cyan-950/50 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]' : 'bg-blue-900/40 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)]')
                           : isLive
-                          ? 'bg-blue-950/50 border border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]'
-                          : 'bg-blue-950/30 border border-blue-500/20 opacity-75'
+                          ? (isDisplayedCtf ? 'bg-cyan-950/40 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'bg-blue-950/50 border border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]')
+                          : (isDisplayedCtf ? 'bg-cyan-950/20 border border-cyan-500/20 opacity-75' : 'bg-blue-950/30 border border-blue-500/20 opacity-75')
                       }`}>
                          {!isLive && displayedMatch.team1Score > displayedMatch.team2Score && (
-                           <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase">
+                           <div className={`absolute top-0 right-0 ${isDisplayedCtf ? 'bg-cyan-500 text-cyan-950' : 'bg-blue-500 text-white'} text-[10px] font-black px-2.5 py-0.5 rounded-bl shadow-md tracking-widest uppercase`}>
                              Win
                            </div>
                          )}
-                         <span className={`text-xs font-bold uppercase truncate w-full text-center tracking-wider ${(!isLive && displayedMatch.team1Score > displayedMatch.team2Score) || isLive ? 'text-white' : 'text-blue-300'}`}>
-                           {displayedMatch.team1Name || 'Team 1'}
+                         <span className={`text-xs font-bold uppercase truncate w-full text-center tracking-wider ${(!isLive && displayedMatch.team1Score > displayedMatch.team2Score) || isLive ? 'text-white' : (isDisplayedCtf ? 'text-cyan-300' : 'text-blue-300')}`}>
+                           {displayedMatch.team1Name || (isDisplayedCtf ? 'Blue Team' : 'Team 1')}
                          </span>
-                         <span className={`text-4xl font-black mt-1 z-10 ${(!isLive && displayedMatch.team1Score > displayedMatch.team2Score) || isLive ? 'text-white' : 'text-blue-200/60'}`}>
-                           {displayedMatch.team1Score?.toLocaleString('no-NO')}
-                         </span>
+                         {isDisplayedCtf ? (
+                           <div className="flex items-center gap-1.5 mt-1 z-10">
+                             <Flag className="w-5 h-5 text-cyan-400 fill-cyan-400/20" />
+                             <span className={`text-4xl font-black ${(!isLive && displayedMatch.team1Score > displayedMatch.team2Score) || isLive ? 'text-white' : 'text-cyan-200/60'}`}>
+                               {displayedMatch.team1Score}
+                             </span>
+                           </div>
+                         ) : (
+                           <span className={`text-4xl font-black mt-1 z-10 ${(!isLive && displayedMatch.team1Score > displayedMatch.team2Score) || isLive ? 'text-white' : 'text-blue-200/60'}`}>
+                             {displayedMatch.team1Score?.toLocaleString('no-NO')}
+                           </span>
+                         )}
                       </div>
                       <div className="text-xs font-black text-gray-500 shrink-0 uppercase tracking-widest">VS</div>
                       <div className={`flex flex-col items-center flex-1 min-w-0 rounded-xl p-3 relative overflow-hidden transition-all ${
@@ -295,17 +356,26 @@ export default function SpectatorPage() {
                            </div>
                          )}
                          <span className={`text-xs font-bold uppercase truncate w-full text-center tracking-wider ${(!isLive && displayedMatch.team2Score > displayedMatch.team1Score) || isLive ? 'text-white' : 'text-orange-300'}`}>
-                           {displayedMatch.team2Name || 'Team 2'}
+                           {displayedMatch.team2Name || (isDisplayedCtf ? 'Orange Team' : 'Team 2')}
                          </span>
-                         <span className={`text-4xl font-black mt-1 z-10 ${(!isLive && displayedMatch.team2Score > displayedMatch.team1Score) || isLive ? 'text-white' : 'text-orange-200/60'}`}>
-                           {displayedMatch.team2Score?.toLocaleString('no-NO')}
-                         </span>
+                         {isDisplayedCtf ? (
+                           <div className="flex items-center gap-1.5 mt-1 z-10">
+                             <Flag className="w-5 h-5 text-orange-400 fill-orange-400/20" />
+                             <span className={`text-4xl font-black ${(!isLive && displayedMatch.team2Score > displayedMatch.team1Score) || isLive ? 'text-white' : 'text-orange-200/60'}`}>
+                               {displayedMatch.team2Score}
+                             </span>
+                           </div>
+                         ) : (
+                           <span className={`text-4xl font-black mt-1 z-10 ${(!isLive && displayedMatch.team2Score > displayedMatch.team1Score) || isLive ? 'text-white' : 'text-orange-200/60'}`}>
+                             {displayedMatch.team2Score?.toLocaleString('no-NO')}
+                           </span>
+                         )}
                       </div>
                     </div>
                     
                     <div className="flex flex-col gap-3">
-                      <MiniTeamTable stats={displayedMatch.playerStats.filter(p => p.team === 1)} color="blue" isLive={isLive} />
-                      <MiniTeamTable stats={displayedMatch.playerStats.filter(p => p.team === 2)} color="orange" isLive={isLive} />
+                      <MiniTeamTable stats={displayedMatch.playerStats.filter(p => p.team === 1)} color="blue" isLive={isLive} isCtf={isDisplayedCtf} />
+                      <MiniTeamTable stats={displayedMatch.playerStats.filter(p => p.team === 2)} color="orange" isLive={isLive} isCtf={isDisplayedCtf} />
                     </div>
                   </>
                 )}
@@ -322,28 +392,34 @@ export default function SpectatorPage() {
              
              <div className="p-3 overflow-y-auto flex-1 space-y-2.5 no-scrollbar">
                {previousMatches.map(match => {
-                  const isSurvival = match.gameMode?.toLowerCase() === 'survival';
+                  const mode = match.gameMode?.toLowerCase();
+                  const isSurvival = mode === 'survival';
+                  const isCtf = mode === 'capturetheflag';
+                  const isFfa = mode === 'freeforall';
                   const t1Won = match.team1Score > match.team2Score;
                   const t2Won = match.team2Score > match.team1Score;
+                  const ffaSorted = isFfa ? [...(match.playerStats || [])].sort((a, b) => b.score - a.score) : [];
+                  const ffaWinner = ffaSorted[0];
+
                   return (
                     <div key={match.matchId} className="bg-white/5 hover:bg-white/[0.08] transition-colors rounded-xl border border-white/5 flex flex-col p-2.5 text-xs">
                       <div className="flex justify-between items-center border-b border-white/5 pb-1.5 mb-2">
                          <span className="text-gray-300 text-xs font-bold tracking-wider">{format(parseISO(match.matchStartTimestamp), 'HH:mm')}</span>
                          {isSurvival ? (
                            <span className="text-gray-400 text-[10px] uppercase tracking-widest">Survival {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}</span>
+                         ) : isCtf ? (
+                           <span className="text-cyan-400 text-[10px] uppercase tracking-widest flex items-center gap-1 font-bold">
+                             <Flag className="w-3 h-3" /> Capture The Flag
+                           </span>
+                         ) : isFfa ? (
+                           <span className="text-yellow-400 text-[10px] uppercase tracking-widest flex items-center gap-1 font-bold">
+                             <Skull className="w-3 h-3" /> Free For All
+                           </span>
                          ) : (
                            <span className="text-gray-400 text-[10px] uppercase tracking-widest">{formatGameMode(match.gameMode)}</span>
                          )}
                       </div>
-                      {!isSurvival ? (
-                        <div className="flex justify-between items-center px-1">
-                           <span className={`truncate flex-1 text-xs font-semibold ${t1Won ? 'text-blue-400 font-bold' : 'text-gray-300'}`}>{match.team1Name || 'Team 1'}</span>
-                           <span className={`font-black text-base px-2 ${t1Won ? 'text-white' : 'text-gray-400'}`}>{match.team1Score?.toLocaleString('no-NO')}</span>
-                           <span className="text-gray-600 text-xs font-bold">-</span>
-                           <span className={`font-black text-base px-2 ${t2Won ? 'text-white' : 'text-gray-400'}`}>{match.team2Score?.toLocaleString('no-NO')}</span>
-                           <span className={`truncate flex-1 text-right text-xs font-semibold ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-300'}`}>{match.team2Name || 'Team 2'}</span>
-                        </div>
-                      ) : (
+                      {isSurvival ? (
                         <div className="flex flex-col items-center px-1">
                           <div className="flex justify-center items-center gap-2">
                             <span className="text-gray-400 uppercase tracking-widest text-[10px]">Score:</span>
@@ -353,6 +429,39 @@ export default function SpectatorPage() {
                           <div className="mt-1">
                             <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} />
                           </div>
+                        </div>
+                      ) : isFfa ? (
+                        <div className="flex justify-between items-center px-1">
+                          <div className="flex items-center gap-2 truncate flex-1">
+                            <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">1st</span>
+                            <span className="text-xs font-bold text-yellow-400 uppercase tracking-wide truncate">{ffaWinner?.playerName || 'Winner'}</span>
+                            <span className="text-[11px] text-gray-400 font-mono">({ffaWinner?.kills}K)</span>
+                          </div>
+                          <div className="font-black text-sm text-white font-mono shrink-0 pl-2">
+                            {ffaWinner?.score?.toLocaleString('no-NO')} <span className="text-[10px] text-yellow-500/80 font-bold">PTS</span>
+                          </div>
+                        </div>
+                      ) : isCtf ? (
+                        <div className="flex justify-between items-center px-1">
+                           <span className={`truncate flex-1 text-xs font-semibold ${t1Won ? 'text-cyan-400 font-bold' : 'text-gray-300'}`}>{match.team1Name || 'Blue Team'}</span>
+                           <div className="flex items-center gap-1 px-2">
+                             <Flag className="w-3.5 h-3.5 text-cyan-400" />
+                             <span className={`font-black text-base ${t1Won ? 'text-white' : 'text-gray-400'}`}>{match.team1Score}</span>
+                           </div>
+                           <span className="text-gray-600 text-xs font-bold">-</span>
+                           <div className="flex items-center gap-1 px-2">
+                             <span className={`font-black text-base ${t2Won ? 'text-white' : 'text-gray-400'}`}>{match.team2Score}</span>
+                             <Flag className="w-3.5 h-3.5 text-orange-400" />
+                           </div>
+                           <span className={`truncate flex-1 text-right text-xs font-semibold ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-300'}`}>{match.team2Name || 'Orange Team'}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center px-1">
+                           <span className={`truncate flex-1 text-xs font-semibold ${t1Won ? 'text-blue-400 font-bold' : 'text-gray-300'}`}>{match.team1Name || 'Team 1'}</span>
+                           <span className={`font-black text-base px-2 ${t1Won ? 'text-white' : 'text-gray-400'}`}>{match.team1Score?.toLocaleString('no-NO')}</span>
+                           <span className="text-gray-600 text-xs font-bold">-</span>
+                           <span className={`font-black text-base px-2 ${t2Won ? 'text-white' : 'text-gray-400'}`}>{match.team2Score?.toLocaleString('no-NO')}</span>
+                           <span className={`truncate flex-1 text-right text-xs font-semibold ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-300'}`}>{match.team2Name || 'Team 2'}</span>
                         </div>
                       )}
                     </div>
@@ -391,20 +500,20 @@ function LiveClock({ matchStartTimestamp }: { matchStartTimestamp?: string }) {
   return <>{elapsed || '0:00'}</>;
 }
 
-function MiniTeamTable({ stats, color, isSurvival, isLive }: { stats: PlayerStat[], color: 'blue' | 'orange', isSurvival?: boolean, isLive?: boolean }) {
-  const sortedStats = [...stats].sort((a, b) => b.score - a.score);
-  const textColor = color === 'blue' ? 'text-blue-400' : 'text-orange-400';
-  const borderColor = color === 'blue' ? 'border-blue-500/20' : 'border-orange-500/20';
+function MiniTeamTable({ stats, color, isSurvival, isLive, isCtf }: { stats: PlayerStat[], color: 'blue' | 'orange', isSurvival?: boolean, isLive?: boolean, isCtf?: boolean }) {
+  const sortedStats = [...stats].sort((a, b) => isCtf ? ((b.objectives || 0) - (a.objectives || 0) || b.score - a.score) : b.score - a.score);
+  const textColor = color === 'blue' ? (isCtf ? 'text-cyan-400' : 'text-blue-400') : 'text-orange-400';
+  const borderColor = color === 'blue' ? (isCtf ? 'border-cyan-500/20' : 'border-blue-500/20') : 'border-orange-500/20';
 
   return (
     <div className={`bg-white/[0.04] rounded-xl border ${borderColor} overflow-hidden`}>
       <table className="w-full text-left table-fixed">
         <tbody className="divide-y divide-white/5 text-xs">
           {sortedStats.slice(0, 3).map((player, idx) => {
-            const isMVP = !isSurvival && !isLive && idx === 0 && player.score > 0;
+            const isMVP = !isSurvival && !isLive && idx === 0 && (isCtf ? (player.objectives || 0) > 0 || player.score > 0 : player.score > 0);
             return (
               <tr key={idx} className={`transition-colors ${player.isBot ? 'opacity-70 italic' : ''}`}>
-                <td className="py-2.5 px-3 font-semibold text-gray-100 truncate w-[55%]">
+                <td className="py-2.5 px-3 font-semibold text-gray-100 truncate w-[45%]">
                   <span className={`truncate text-sm ${isMVP && !player.isBot ? 'font-bold text-white' : ''}`}>
                     {player.playerName}
                   </span>
@@ -413,8 +522,59 @@ function MiniTeamTable({ stats, color, isSurvival, isLive }: { stats: PlayerStat
                   {player.score?.toLocaleString('no-NO')}
                 </td>
                 <td className="py-2.5 px-3 text-right">
-                  <span className="bg-white/10 text-gray-200 text-xs font-bold px-2.5 py-1 rounded inline-block">
-                    {player.kills}K
+                  <div className="flex items-center justify-end gap-1.5">
+                    {isCtf && (
+                      <span className="bg-cyan-500/20 text-cyan-300 text-xs font-bold px-2 py-0.5 rounded inline-flex items-center gap-1">
+                        <Flag className="w-3 h-3" /> {player.objectives || 0}
+                      </span>
+                    )}
+                    <span className="bg-white/10 text-gray-200 text-xs font-bold px-2 py-0.5 rounded inline-block">
+                      {player.kills}K
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MiniFfaTable({ stats }: { stats: PlayerStat[] }) {
+  const sortedStats = [...stats].sort((a, b) => b.score - a.score);
+
+  return (
+    <div className="bg-white/[0.04] rounded-xl border border-yellow-500/20 overflow-hidden">
+      <table className="w-full text-left table-fixed">
+        <thead className="bg-black/30 border-b border-yellow-500/20 text-[10px] text-yellow-500/80 uppercase tracking-widest font-bold">
+          <tr>
+            <th className="py-1 px-2 w-[12%] text-center">#</th>
+            <th className="py-1 px-2 w-[44%]">Player</th>
+            <th className="py-1 px-1 w-[24%] text-center">Score</th>
+            <th className="py-1 px-2 w-[20%] text-right">K/D</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5 text-xs">
+          {sortedStats.slice(0, 5).map((player, idx) => {
+            const isWinner = idx === 0 && player.score > 0;
+            return (
+              <tr key={idx} className={`transition-colors ${isWinner && !player.isBot ? 'bg-yellow-500/10' : player.isBot ? 'opacity-70 italic' : ''}`}>
+                <td className="py-2 px-2 text-center font-mono font-bold text-gray-400">
+                  {idx === 0 ? <span className="text-yellow-400 font-black">1</span> : idx + 1}
+                </td>
+                <td className="py-2 px-2 font-semibold text-gray-100 truncate">
+                  <span className={`truncate text-sm ${isWinner && !player.isBot ? 'font-black text-yellow-400' : ''}`}>
+                    {player.playerName}
+                  </span>
+                </td>
+                <td className="py-2 px-1 font-mono text-center font-black text-sm text-yellow-400">
+                  {player.score?.toLocaleString('no-NO')}
+                </td>
+                <td className="py-2 px-2 text-right">
+                  <span className="bg-white/10 text-gray-200 text-xs font-bold px-2 py-0.5 rounded inline-block">
+                    {player.kills}/{player.deaths}
                   </span>
                 </td>
               </tr>

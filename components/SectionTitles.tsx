@@ -1,4 +1,4 @@
-import { Trophy, Crosshair } from 'lucide-react';
+import { Trophy, Crosshair, Flag, Skull, Target } from 'lucide-react';
 
 export function TdmBanner() {
   return (
@@ -61,3 +61,78 @@ export function SurvivalBanner() {
     </div>
   );
 }
+
+export function CtfBanner() {
+  return (
+    <div className="relative mb-10 mt-6 print:mb-6 overflow-hidden rounded-xl border border-cyan-500/30 bg-gradient-to-b from-[#05131a] via-[#090b10] to-[#0a0a0a] p-6 shadow-[0_0_35px_rgba(6,182,212,0.2)]">
+      {/* Background arcade grid */}
+      <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(6,182,212,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.15) 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+      
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none bg-[linear-gradient(transparent_50%,rgba(0,0,0,1)_50%)] bg-[length:100%_4px]"></div>
+
+      {/* Cyan/Orange dual bottom laser glow */}
+      <div className="absolute bottom-0 left-0 right-1/2 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-80 blur-[2px]"></div>
+      <div className="absolute bottom-0 left-1/2 right-0 h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-80 blur-[2px]"></div>
+
+      <div className="relative z-10 flex flex-col items-center justify-center text-center">
+        <div className="flex items-center gap-3 sm:gap-4 mb-0 relative z-10">
+          <Flag className="w-8 h-8 sm:w-10 sm:h-10 text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,1)] print:text-black print:drop-shadow-none" />
+          <h1 className="text-5xl sm:text-7xl font-black italic tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-cyan-100 via-gray-300 to-gray-700 drop-shadow-[0_5px_15px_rgba(0,0,0,1)] print:text-black print:drop-shadow-none print:bg-none uppercase" style={{ WebkitTextStroke: '2px rgba(6,182,212,0.3)' }}>
+            CAPTURE THE FLAG
+          </h1>
+          <Flag className="w-8 h-8 sm:w-10 sm:h-10 text-orange-400 drop-shadow-[0_0_15px_rgba(249,115,22,1)] print:hidden" />
+        </div>
+        
+        <div className="relative -mt-3 sm:-mt-5 text-sm sm:text-2xl font-black tracking-widest uppercase flex items-center justify-center print:text-gray-700 z-20">
+          <span className="bg-cyan-950/80 border-4 border-cyan-500 text-cyan-300 px-4 py-1 sm:px-8 sm:py-2 rounded-l-lg shadow-[0_0_20px_rgba(6,182,212,0.6),inset_0_0_15px_rgba(6,182,212,0.4)] z-10 -skew-x-12 transform">
+            Blue Team
+          </span>
+          <span className="text-white italic text-4xl sm:text-6xl font-black z-30 drop-shadow-[0_5px_10px_rgba(0,0,0,0.9)] -mx-3 sm:-mx-5 scale-110">VS</span>
+          <span className="bg-orange-950/80 border-4 border-orange-500 text-orange-400 px-4 py-1 sm:px-8 sm:py-2 rounded-r-lg shadow-[0_0_20px_rgba(249,115,22,0.6),inset_0_0_15px_rgba(249,115,22,0.4)] z-10 -skew-x-12 transform">
+            Orange Team
+          </span>
+        </div>
+        
+        <div className="mt-3 text-[11px] sm:text-xs font-black tracking-[0.3em] uppercase text-cyan-400/80 flex items-center justify-center gap-3">
+          <span className="w-6 sm:w-12 h-px bg-cyan-400/50"></span>
+          BLUE VS ORANGE • CAPTURE THE FLAG
+          <span className="w-6 sm:w-12 h-px bg-orange-400/50"></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function FfaBanner() {
+  return (
+    <div className="relative mb-10 mt-6 print:mb-6 overflow-hidden rounded-xl border border-yellow-500/30 bg-gradient-to-b from-[#141005] via-[#0d0d0d] to-[#0a0a0a] p-6 shadow-[0_0_35px_rgba(234,179,8,0.2)]">
+      {/* Background arcade grid */}
+      <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(234,179,8,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(234,179,8,0.15) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+      
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none bg-[linear-gradient(transparent_50%,rgba(0,0,0,1)_50%)] bg-[length:100%_4px]"></div>
+
+      {/* Gold neon bottom laser glow */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-80 blur-[2px]"></div>
+
+      <div className="relative z-10 flex flex-col items-center justify-center text-center">
+        <div className="flex items-center gap-3 sm:gap-4 mb-0 relative z-10">
+          <Skull className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,1)] print:text-black print:drop-shadow-none" />
+          <h1 className="text-5xl sm:text-7xl font-black italic tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-yellow-100 via-amber-300 to-yellow-700 drop-shadow-[0_5px_15px_rgba(0,0,0,1)] print:text-black print:drop-shadow-none print:bg-none uppercase" style={{ WebkitTextStroke: '2px rgba(250,204,21,0.3)' }}>
+            FREE FOR ALL
+          </h1>
+          <Target className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,1)] print:hidden" />
+        </div>
+        
+        <div className="relative mt-2 text-xs sm:text-xl font-black tracking-[0.3em] sm:tracking-[0.4em] uppercase text-yellow-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.8)] print:text-gray-700 flex items-center justify-center gap-2 sm:gap-4 z-20">
+          <span className="w-8 sm:w-16 h-px bg-yellow-500/50 hidden sm:block shadow-[0_0_10px_rgba(234,179,8,0.8)]"></span>
+          SOLO DEATHMATCH • EVERY PLAYER FOR THEMSELVES
+          <span className="w-8 sm:w-16 h-px bg-yellow-500/50 hidden sm:block shadow-[0_0_10px_rgba(234,179,8,0.8)]"></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+

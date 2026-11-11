@@ -3,13 +3,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
-import { Trophy, Crosshair } from 'lucide-react';
+import { Trophy, Crosshair, Flag, Skull, Target } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { useTournaments } from '@/hooks/use-tournaments';
 import { getTournamentsForDate, getTournamentTitle, groupMatchesByTournament } from '@/lib/tournaments';
 import { getSurvivalHighscores } from '@/lib/survival-highscores';
 import { HighscoreBadge } from '@/components/HighscoreBadge';
-import { TdmBanner, SurvivalBanner } from '@/components/SectionTitles';
+import { TdmBanner, SurvivalBanner, CtfBanner, FfaBanner } from '@/components/SectionTitles';
 import { PlayerStat, MatchData } from '@/types/match';
 
 const formatGameMode = (mode?: string) => {
@@ -18,6 +18,7 @@ const formatGameMode = (mode?: string) => {
   const lower = mode.toLowerCase();
   if (lower === 'teamdeathmatch') displayMode = 'TEAM DEATHMATCH';
   else if (lower === 'freeforall') displayMode = 'FREE FOR ALL';
+  else if (lower === 'capturetheflag') displayMode = 'CAPTURE THE FLAG';
   else displayMode = mode.toUpperCase();
   return displayMode;
 };
@@ -144,19 +145,25 @@ export default function TVPage() {
     return filtered.sort((a, b) => new Date(b.matchStartTimestamp).getTime() - new Date(a.matchStartTimestamp).getTime());
   }, [dayMatches, tournamentGroups, activeTournamentId, dayTournaments]);
 
-  const { teamDeathmatchMatches, survivalMatches } = useMemo(() => {
+  const { teamDeathmatchMatches, ctfMatches, ffaMatches, survivalMatches } = useMemo(() => {
     const tdm: MatchData[] = [];
+    const ctf: MatchData[] = [];
+    const ffa: MatchData[] = [];
     const survival: MatchData[] = [];
     
     sortedMatches.forEach(m => {
       const mode = m.gameMode?.toLowerCase() || '';
       if (mode === 'survival') {
         survival.push(m);
-      } else if (mode !== 'freeforall') {
+      } else if (mode === 'capturetheflag') {
+        ctf.push(m);
+      } else if (mode === 'freeforall') {
+        ffa.push(m);
+      } else {
         tdm.push(m);
       }
     });
-    return { teamDeathmatchMatches: tdm, survivalMatches: survival };
+    return { teamDeathmatchMatches: tdm, ctfMatches: ctf, ffaMatches: ffa, survivalMatches: survival };
   }, [sortedMatches]);
 
   const teamDeathmatchSummary = useMemo(() => {
@@ -183,6 +190,56 @@ export default function TVPage() {
       .sort((a, b) => b.totalScore - a.totalScore);
   }, [teamDeathmatchMatches]);
 
+  const ctfSummary = useMemo(() => {
+    const summary: Record<string, { matches: number, flags: number, wins: number }> = {};
+    
+    ctfMatches.forEach(match => {
+      const t1 = (match.team1Name || 'Team 1').toUpperCase();
+      const t2 = (match.team2Name || 'Team 2').toUpperCase();
+      
+      if (!summary[t1]) summary[t1] = { matches: 0, flags: 0, wins: 0 };
+      if (!summary[t2]) summary[t2] = { matches: 0, flags: 0, wins: 0 };
+      
+      summary[t1].matches += 1;
+      summary[t1].flags += match.team1Score;
+      if (match.team1Score > match.team2Score) summary[t1].wins += 1;
+      
+      summary[t2].matches += 1;
+      summary[t2].flags += match.team2Score;
+      if (match.team2Score > match.team1Score) summary[t2].wins += 1;
+    });
+    
+    return Object.entries(summary)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.flags - a.flags);
+  }, [ctfMatches]);
+
+  const ffaSummary = useMemo(() => {
+    const summary: Record<string, { score: number, kills: number, deaths: number, matches: number, wins: number }> = {};
+    
+    ffaMatches.forEach(match => {
+      const sorted = [...match.playerStats].sort((a, b) => b.score - a.score);
+      const winnerName = sorted.length > 0 && sorted[0].score > 0 ? sorted[0].playerName : null;
+
+      match.playerStats.forEach(p => {
+        if (!summary[p.playerName]) {
+          summary[p.playerName] = { score: 0, kills: 0, deaths: 0, matches: 0, wins: 0 };
+        }
+        summary[p.playerName].score += p.score;
+        summary[p.playerName].kills += p.kills;
+        summary[p.playerName].deaths += p.deaths || 0;
+        summary[p.playerName].matches += 1;
+        if (winnerName && p.playerName === winnerName && !p.isBot) {
+          summary[p.playerName].wins += 1;
+        }
+      });
+    });
+
+    return Object.entries(summary)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.score - a.score);
+  }, [ffaMatches]);
+
   const survivalHighscores = useMemo(() => getSurvivalHighscores(survivalMatches), [survivalMatches]);
 
   const survivalTeamSummary = useMemo(() => {
@@ -196,7 +253,14 @@ export default function TVPage() {
 
   if (!isLoaded) return <div className="h-screen bg-[#0A0A0A] flex items-center justify-center text-gray-500 font-bold tracking-widest uppercase">Loading Live Data...</div>;
 
-  const showSplitScreen = teamDeathmatchMatches.length > 0 && survivalMatches.length > 0;
+  const activeCount = [
+    teamDeathmatchMatches.length > 0,
+    ctfMatches.length > 0,
+    ffaMatches.length > 0,
+    survivalMatches.length > 0,
+  ].filter(Boolean).length;
+
+  const showSplitScreen = activeCount > 1;
   const gridColsClass = showSplitScreen ? 'grid-cols-2' : 'grid-cols-1 w-full';
 
   return (
@@ -245,6 +309,10 @@ export default function TVPage() {
              <div className="absolute inset-0 border-2 border-red-500/50 rounded-xl pointer-events-none z-20"></div>
              {liveMatch.gameMode?.toLowerCase() === 'survival' ? (
                <SurvivalCard match={liveMatch} isLive />
+             ) : liveMatch.gameMode?.toLowerCase() === 'capturetheflag' ? (
+               <CtfCard match={liveMatch} isLive />
+             ) : liveMatch.gameMode?.toLowerCase() === 'freeforall' ? (
+               <FreeForAllCard match={liveMatch} isLive />
              ) : (
                <TeamDeathmatchCard match={liveMatch} isLive />
              )}
@@ -352,6 +420,236 @@ export default function TVPage() {
                       {teamDeathmatchMatches.length > 1 ? (
                         teamDeathmatchMatches.slice(1).map(match => (
                            <CompactTdmMatchCard key={match.matchId} match={match} />
+                        ))
+                      ) : (
+                        <div className="h-full flex items-center justify-center border border-white/5 bg-white/5 rounded-lg text-gray-500 text-xs font-bold uppercase tracking-widest">
+                          No more matches today
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CAPTURE THE FLAG SECTION */}
+        {ctfMatches.length > 0 && (
+          <div className="flex flex-col h-full overflow-hidden">
+            <CtfBanner />
+            
+            {showSplitScreen ? (
+              <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-8">
+                {/* CTF Leaderboard */}
+                {ctfSummary.length > 0 && (
+                  <div className="mb-8 shrink-0">
+                    <h2 className="text-xl font-black tracking-widest uppercase text-cyan-400 mb-3 text-center">Tournament Leaderboard</h2>
+                    <div className="flex flex-col gap-3">
+                      {ctfSummary.map((team, idx) => {
+                        const placement = idx + 1;
+                        
+                        return (
+                        <div key={team.name} className={`shrink-0 relative overflow-hidden ${idx === 0 ? 'bg-cyan-950/40 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-4 transition-all flex items-center justify-between`}>
+                          {idx === 0 && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.8)] z-10"></div>}
+                          
+                          <div className="flex items-center gap-4 sm:gap-6 z-20 pl-2">
+                            <div className={`text-4xl font-black ${idx === 0 ? 'text-cyan-400' : 'text-gray-600'} w-10 text-right`}>{placement}</div>
+                            
+                            <div className="flex flex-col items-start text-left">
+                              <div className="flex items-center gap-3">
+                                <span className={`text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
+                                  {team.name}
+                                </span>
+                                {idx === 0 && <span className="bg-cyan-500 text-cyan-950 text-xs font-black px-2 py-1 rounded shadow-sm tracking-widest uppercase">Leader</span>}
+                              </div>
+                              <div className="text-xs text-gray-400 uppercase tracking-widest mt-1">
+                                {team.wins} Win{team.wins !== 1 && 's'} • {team.flags} Flag{team.flags !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-6xl font-black text-cyan-400 tracking-tighter pr-4">
+                            <Flag className="w-8 h-8 fill-cyan-400/20" />
+                            <span>{team.flags}</span>
+                          </div>
+                        </div>
+                      )})}
+                    </div>
+                  </div>
+                )}
+
+                {/* CTF Matches */}
+                <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                   <h2 className="text-xl font-black tracking-widest uppercase text-cyan-400 mb-3 text-center shrink-0">Latest Matches</h2>
+                   <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-3 pb-12">
+                     {ctfMatches.map(match => (
+                       <CtfCard key={match.matchId} match={match} />
+                     ))}
+                   </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-6">
+                {/* Full width horizontal Leaderboard */}
+                {ctfSummary.length > 0 && (
+                  <div className="mb-3 shrink-0">
+                    <h2 className="text-2xl font-black tracking-widest uppercase text-cyan-300 mb-2 text-center">Tournament Leaderboard</h2>
+                    <div className="flex justify-center gap-3 px-4 w-full">
+                      {ctfSummary.slice(0, 6).map((team, idx) => {
+                        const placement = idx + 1;
+                        return (
+                           <div key={team.name} className={`flex-1 min-w-0 max-w-[320px] relative overflow-hidden ${idx === 0 ? 'bg-cyan-950/40 border border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-xl p-4 flex flex-col items-center justify-center text-center`}>
+                             {idx === 0 && <div className="absolute top-0 left-0 right-0 h-1.5 bg-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.8)] z-10"></div>}
+                             <div className="flex flex-col items-center gap-1 mb-3 z-20">
+                                <span className={`text-4xl leading-none font-black ${idx === 0 ? 'text-cyan-400' : 'text-gray-400'}`}>{placement}</span>
+                                <span className={`text-xl font-bold uppercase tracking-widest truncate max-w-full ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>{team.name}</span>
+                             </div>
+                             {idx === 0 && <span className="bg-cyan-500 text-cyan-950 text-xs font-black px-2 py-1 rounded shadow-sm tracking-widest uppercase mb-2 z-20">Leader</span>}
+                             <div className="flex items-center gap-2 text-6xl font-black text-cyan-400 tracking-tighter my-2 z-20">
+                               <Flag className="w-8 h-8 fill-cyan-400/20" />
+                               <span>{team.flags}</span>
+                             </div>
+                             <div className="text-sm text-gray-400 uppercase tracking-widest z-20 mt-1">{team.wins} Win{team.wins !== 1 && 's'} in {team.matches} Match{team.matches !== 1 && 'es'}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                  <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden px-4">
+                    {/* Left side: Full details of most recent match */}
+                    <div className="flex flex-col h-full min-h-0">
+                      <h2 className="text-2xl font-black tracking-widest uppercase text-cyan-300 mb-2 text-center shrink-0">LAST MATCH</h2>
+                      <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden pb-12">
+                        {ctfMatches.length > 0 && (
+                           <CtfCard match={ctfMatches[0]} />
+                        )}
+                      </div>
+                    </div>
+                    {/* Right side: Compact details of other matches */}
+                    <div className="flex flex-col h-full min-h-0">
+                      <h2 className="text-2xl font-black tracking-widest uppercase text-cyan-300 mb-2 text-center shrink-0">LATEST MATCHES</h2>
+                      <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-2 pb-12 pr-2">
+                      {ctfMatches.length > 1 ? (
+                        ctfMatches.slice(1).map(match => (
+                           <CompactCtfMatchCard key={match.matchId} match={match} />
+                        ))
+                      ) : (
+                        <div className="h-full flex items-center justify-center border border-white/5 bg-white/5 rounded-lg text-gray-500 text-xs font-bold uppercase tracking-widest">
+                          No more matches today
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* FREE FOR ALL SECTION */}
+        {ffaMatches.length > 0 && (
+          <div className="flex flex-col h-full overflow-hidden">
+            <FfaBanner />
+            
+            {showSplitScreen ? (
+              <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-8">
+                {/* FFA Leaderboard */}
+                {ffaSummary.length > 0 && (
+                  <div className="mb-8 shrink-0">
+                    <h2 className="text-xl font-black tracking-widest uppercase text-yellow-500 mb-3 text-center">Solo Leaderboard</h2>
+                    <div className="flex flex-col gap-3">
+                      {ffaSummary.map((player, idx) => {
+                        const placement = idx + 1;
+                        
+                        return (
+                        <div key={player.name} className={`shrink-0 relative overflow-hidden ${idx === 0 ? 'bg-yellow-950/40 border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.4)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-lg p-4 transition-all flex items-center justify-between`}>
+                          {idx === 0 && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] z-10"></div>}
+                          
+                          <div className="flex items-center gap-4 sm:gap-6 z-20 pl-2">
+                            <div className={`text-4xl font-black ${idx === 0 ? 'text-yellow-400' : 'text-gray-600'} w-10 text-right`}>{placement}</div>
+                            
+                            <div className="flex flex-col items-start text-left">
+                              <div className="flex items-center gap-3">
+                                <span className={`text-xl font-bold uppercase tracking-widest ${idx === 0 ? 'text-white font-black' : 'text-gray-300'}`}>
+                                  {player.name}
+                                </span>
+                                {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-xs font-black px-2 py-1 rounded shadow-sm tracking-widest uppercase">Leader</span>}
+                              </div>
+                              <div className="text-xs text-gray-400 uppercase tracking-widest mt-1">
+                                {player.wins} 1st Win{player.wins !== 1 && 's'} • {player.kills} Kills in {player.matches} Match{player.matches !== 1 && 'es'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-5xl font-black text-yellow-400 tracking-tighter pr-4 font-mono">
+                            {player.score?.toLocaleString('no-NO')}
+                          </div>
+                        </div>
+                      )})}
+                    </div>
+                  </div>
+                )}
+
+                {/* FFA Matches */}
+                <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                   <h2 className="text-xl font-black tracking-widest uppercase text-yellow-500 mb-3 text-center shrink-0">Latest Matches</h2>
+                   <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-3 pb-12">
+                     {ffaMatches.map(match => (
+                       <FreeForAllCard key={match.matchId} match={match} />
+                     ))}
+                   </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col flex-1 overflow-hidden min-h-0 pt-6">
+                {/* Full width horizontal Leaderboard */}
+                {ffaSummary.length > 0 && (
+                  <div className="mb-3 shrink-0">
+                    <h2 className="text-2xl font-black tracking-widest uppercase text-yellow-400 mb-2 text-center">Solo Leaderboard</h2>
+                    <div className="flex justify-center gap-3 px-4 w-full">
+                      {ffaSummary.slice(0, 6).map((player, idx) => {
+                        const placement = idx + 1;
+                        return (
+                           <div key={player.name} className={`flex-1 min-w-0 max-w-[320px] relative overflow-hidden ${idx === 0 ? 'bg-yellow-950/40 border border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-xl p-4 flex flex-col items-center justify-center text-center`}>
+                             {idx === 0 && <div className="absolute top-0 left-0 right-0 h-1.5 bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)] z-10"></div>}
+                             <div className="flex flex-col items-center gap-1 mb-3 z-20">
+                                <span className={`text-4xl leading-none font-black ${idx === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>{placement}</span>
+                                <span className={`text-xl font-bold uppercase tracking-widest truncate max-w-full ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>{player.name}</span>
+                             </div>
+                             {idx === 0 && <span className="bg-yellow-500 text-yellow-950 text-xs font-black px-2 py-1 rounded shadow-sm tracking-widest uppercase mb-2 z-20">Leader</span>}
+                             <div className="text-5xl font-black text-yellow-400 tracking-tighter my-2 z-20 font-mono">{player.score?.toLocaleString('no-NO')}</div>
+                             <div className="text-sm text-gray-400 uppercase tracking-widest z-20 mt-1">{player.wins} 1st Win{player.wins !== 1 && 's'} in {player.matches} Match{player.matches !== 1 && 'es'}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                  <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden px-4">
+                    {/* Left side: Full details of most recent match */}
+                    <div className="flex flex-col h-full min-h-0">
+                      <h2 className="text-2xl font-black tracking-widest uppercase text-yellow-400 mb-2 text-center shrink-0">LAST MATCH</h2>
+                      <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden pb-12">
+                        {ffaMatches.length > 0 && (
+                           <FreeForAllCard match={ffaMatches[0]} />
+                        )}
+                      </div>
+                    </div>
+                    {/* Right side: Compact details of other matches */}
+                    <div className="flex flex-col h-full min-h-0">
+                      <h2 className="text-2xl font-black tracking-widest uppercase text-yellow-400 mb-2 text-center shrink-0">LATEST MATCHES</h2>
+                      <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden space-y-2 pb-12 pr-2">
+                      {ffaMatches.length > 1 ? (
+                        ffaMatches.slice(1).map(match => (
+                           <CompactFfaMatchCard key={match.matchId} match={match} />
                         ))
                       ) : (
                         <div className="h-full flex items-center justify-center border border-white/5 bg-white/5 rounded-lg text-gray-500 text-xs font-bold uppercase tracking-widest">
@@ -574,8 +872,8 @@ function SurvivalCard({ match, isLive }: { match: MatchData, isLive?: boolean })
   );
 }
 
-function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], color: 'blue' | 'orange' | 'red', isSurvival?: boolean }) {
-  const sortedStats = [...stats].sort((a, b) => b.score - a.score);
+function MiniTeamTable({ stats, color, isSurvival, isCtf }: { stats: PlayerStat[], color: 'blue' | 'orange' | 'red', isSurvival?: boolean, isCtf?: boolean }) {
+  const sortedStats = [...stats].sort((a, b) => isCtf ? ((b.objectives || 0) !== (a.objectives || 0) ? (b.objectives || 0) - (a.objectives || 0) : b.score - a.score) : b.score - a.score);
   const textColor = color === 'blue' ? 'text-blue-400' : color === 'red' ? 'text-red-400' : 'text-orange-400';
   const rowHighlight = color === 'blue' ? 'bg-blue-500/10' : color === 'red' ? 'bg-red-500/10' : 'bg-orange-500/10';
   const mvpBadge = color === 'blue' ? 'bg-blue-500/20 text-blue-400' : color === 'red' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400';
@@ -585,15 +883,16 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
       <table className="w-full text-left table-fixed">
         <thead className="bg-black/20 border-b border-white/5">
           <tr>
-            <th className="py-1 px-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-left w-[46%]">Player</th>
-            <th className="py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[22%]">Score</th>
-            <th className="py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[16%]">Kills</th>
-            <th className="py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center w-[16%]">Deaths</th>
+            <th className={`py-1 px-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-left ${isCtf ? 'w-[40%]' : 'w-[46%]'}`}>Player</th>
+            {isCtf && <th className="py-1 px-1 text-[11px] font-bold text-cyan-400 uppercase tracking-widest text-center w-[16%]">Flags</th>}
+            <th className={`py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center ${isCtf ? 'w-[18%]' : 'w-[22%]'}`}>Score</th>
+            <th className={`py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center ${isCtf ? 'w-[13%]' : 'w-[16%]'}`}>Kills</th>
+            <th className={`py-1 px-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center ${isCtf ? 'w-[13%]' : 'w-[16%]'}`}>Deaths</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5 text-sm">
           {sortedStats.slice(0, 4).map((player, idx) => {
-            const isMVP = !isSurvival && idx === 0 && player.score > 0;
+            const isMVP = !isSurvival && idx === 0 && (player.score > 0 || (player.objectives || 0) > 0);
             return (
               <tr key={idx} className={`${isMVP && !player.isBot ? rowHighlight : player.isBot ? 'opacity-70 italic' : ''}`}>
                 <td className="py-1 px-2 font-medium text-gray-300 truncate">
@@ -602,6 +901,9 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
                     {isMVP && !player.isBot && <span className={`shrink-0 text-[10px] px-2 py-1 rounded uppercase tracking-wider font-bold ${mvpBadge}`}>MVP</span>}
                   </div>
                 </td>
+                {isCtf && (
+                  <td className="py-1 px-1 font-mono text-center font-black text-cyan-400">{player.objectives || 0}</td>
+                )}
                 <td className={`py-1 px-1 font-mono text-center font-bold ${textColor}`}>{player.score?.toLocaleString('no-NO')}</td>
                 <td className="py-1 px-1 font-mono text-center text-gray-300 font-bold">{player.kills}</td>
                 <td className="py-1 px-1 font-mono text-center text-gray-400 font-bold">{player.deaths}</td>
@@ -610,6 +912,278 @@ function MiniTeamTable({ stats, color, isSurvival }: { stats: PlayerStat[], colo
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function MiniFfaTable({ stats }: { stats: PlayerStat[] }) {
+  const sortedStats = [...stats].sort((a, b) => b.score - a.score);
+
+  return (
+    <div className="bg-white/5 rounded-md overflow-hidden h-full border border-yellow-500/20">
+      <table className="w-full text-left table-fixed">
+        <thead className="bg-black/30 border-b border-yellow-500/20">
+          <tr>
+            <th className="py-1 px-2 text-[11px] font-bold text-yellow-500/80 uppercase tracking-widest text-center w-[12%]">#</th>
+            <th className="py-1 px-2 text-[11px] font-bold text-yellow-500/80 uppercase tracking-widest text-left w-[42%]">Player</th>
+            <th className="py-1 px-1 text-[11px] font-bold text-yellow-500/80 uppercase tracking-widest text-center w-[22%]">Score</th>
+            <th className="py-1 px-1 text-[11px] font-bold text-yellow-500/80 uppercase tracking-widest text-center w-[12%]">Kills</th>
+            <th className="py-1 px-1 text-[11px] font-bold text-yellow-500/80 uppercase tracking-widest text-center w-[12%]">Deaths</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5 text-sm">
+          {sortedStats.slice(0, 6).map((player, idx) => {
+            const isWinner = idx === 0 && player.score > 0;
+            return (
+              <tr key={idx} className={`${isWinner && !player.isBot ? 'bg-yellow-500/10' : player.isBot ? 'opacity-70 italic' : ''}`}>
+                <td className="py-1 px-2 text-center font-mono font-bold text-gray-400">
+                  {idx === 0 ? <span className="text-yellow-400 font-black">1</span> : idx + 1}
+                </td>
+                <td className="py-1 px-2 font-medium text-gray-300 truncate">
+                  <div className="flex items-center gap-2 w-full truncate">
+                    <span className={`truncate ${isWinner && !player.isBot ? 'font-bold text-yellow-400' : ''}`}>{player.playerName}</span>
+                    {isWinner && !player.isBot && <span className="shrink-0 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">1ST</span>}
+                  </div>
+                </td>
+                <td className="py-1 px-1 font-mono text-center font-bold text-yellow-400">{player.score?.toLocaleString('no-NO')}</td>
+                <td className="py-1 px-1 font-mono text-center text-gray-300 font-bold">{player.kills}</td>
+                <td className="py-1 px-1 font-mono text-center text-gray-400 font-bold">{player.deaths}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CtfCard({ match, isLive }: { match: MatchData, isLive?: boolean }) {
+  const team1Won = match.team1Score > match.team2Score;
+  const team2Won = match.team2Score > match.team1Score;
+
+  return (
+    <div className="bg-[#051117] rounded-xl border border-cyan-500/30 overflow-hidden shadow-xl flex flex-col">
+      <div className="flex items-center justify-between p-2 px-4 border-b border-cyan-500/20 bg-[#071922] shrink-0">
+        <div className="flex items-center gap-4">
+          <span className="text-gray-300 font-bold text-xl tracking-wider">
+            {format(parseISO(match.matchStartTimestamp), 'HH:mm')}
+          </span>
+          <div className="flex gap-3">
+            <span className="px-3 py-1 rounded bg-cyan-950/40 border border-cyan-500/30 text-sm text-cyan-300 uppercase tracking-widest font-bold flex items-center gap-1.5">
+              <Flag className="w-3.5 h-3.5 text-cyan-400" />
+              CAPTURE THE FLAG
+            </span>
+            {isLive ? (
+              <span className="px-3 py-1 rounded bg-red-500/20 border border-red-500/30 text-sm text-red-400 font-bold tracking-widest flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                <LiveClock matchStartTimestamp={match.matchStartTimestamp} />
+              </span>
+            ) : getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp) && (
+              <span className="px-3 py-1 rounded bg-white/5 border border-white/10 text-sm text-gray-400 uppercase tracking-widest">
+                {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="p-3 flex justify-between items-center gap-6 shrink-0">
+        {/* Team 1 (Blue) */}
+        <div className={`flex-1 ${team1Won ? 'bg-cyan-950/50 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]' : 'bg-cyan-950/15 border border-cyan-500/20 opacity-75'} rounded-xl p-3 pt-6 flex flex-col items-center relative overflow-hidden transition-all`}>
+          {team1Won && <div className="absolute top-0 right-0 bg-cyan-500 text-cyan-950 text-xs font-black px-4 py-1.5 rounded-bl-xl shadow-md tracking-widest uppercase">Winner</div>}
+          <div className="text-cyan-400 font-bold uppercase text-xl flex items-center justify-center gap-2 z-10 w-full truncate mt-1">
+            <span className={`truncate ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Blue Team'}</span>
+            <span className="shrink-0 text-[10px] bg-cyan-500/20 border border-cyan-500/30 px-2 py-1 rounded text-cyan-300 font-black">BLUE</span>
+          </div>
+          <div className="flex items-center gap-2 mt-1 z-10">
+            <Flag className="w-8 h-8 text-cyan-400 fill-cyan-400/20" />
+            <div className={`text-7xl font-black ${team1Won ? 'text-white' : 'text-cyan-200/50'}`}>{match.team1Score}</div>
+          </div>
+          <span className="text-xs uppercase font-bold text-cyan-400/80 tracking-widest mt-0.5">Flags Captured</span>
+        </div>
+        
+        <div className="text-gray-600 font-black text-2xl uppercase tracking-widest">VS</div>
+        
+        {/* Team 2 (Orange) */}
+        <div className={`flex-1 ${team2Won ? 'bg-orange-950/50 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)]' : 'bg-orange-950/15 border border-orange-500/20 opacity-75'} rounded-xl p-3 pt-6 flex flex-col items-center relative overflow-hidden transition-all`}>
+          {team2Won && <div className="absolute top-0 right-0 bg-orange-500 text-white text-xs font-black px-4 py-1.5 rounded-bl-xl shadow-md tracking-widest uppercase">Winner</div>}
+          <div className="text-orange-400 font-bold uppercase text-xl flex items-center justify-center gap-2 z-10 w-full truncate mt-1">
+            <span className={`truncate ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Orange Team'}</span>
+            <span className="shrink-0 text-[10px] bg-orange-500/20 border border-orange-500/30 px-2 py-1 rounded text-orange-300 font-black">ORANGE</span>
+          </div>
+          <div className="flex items-center gap-2 mt-1 z-10">
+            <Flag className="w-8 h-8 text-orange-400 fill-orange-400/20" />
+            <div className={`text-7xl font-black ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score}</div>
+          </div>
+          <span className="text-xs uppercase font-bold text-orange-400/80 tracking-widest mt-0.5">Flags Captured</span>
+        </div>
+      </div>
+      <div className="px-3 pb-3 flex gap-3 flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-w-0">
+            <MiniTeamTable stats={match.playerStats.filter(p => p.team === 1)} color="blue" isCtf={true} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <MiniTeamTable stats={match.playerStats.filter(p => p.team === 2)} color="orange" isCtf={true} />
+          </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactCtfMatchCard({ match }: { match: MatchData }) {
+  const team1Won = match.team1Score > match.team2Score;
+  const team2Won = match.team2Score > match.team1Score;
+  const duration = getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp);
+  const time = match.matchStartTimestamp ? format(parseISO(match.matchStartTimestamp), 'HH:mm') : '';
+
+  return (
+    <div className="bg-[#051117] border border-cyan-500/20 rounded-xl overflow-hidden flex items-center p-4 relative">
+      <div className="w-16 shrink-0 flex flex-col items-center justify-center border-r border-white/5 pr-4">
+        <div className="text-white font-bold text-lg">{time}</div>
+        {duration && <div className="text-xs text-gray-500 uppercase tracking-widest mt-1">{duration}</div>}
+      </div>
+      <div className="flex-1 flex justify-between items-center pl-5 pr-2">
+        <div className="flex items-center gap-3 w-[40%]">
+          <span className={`text-base font-bold uppercase truncate ${team1Won ? 'text-cyan-400' : 'text-gray-400'}`}>{match.team1Name || 'Blue Team'}</span>
+          {team1Won && <span className="bg-cyan-500 text-cyan-950 text-[10px] font-black px-2 py-1 rounded uppercase">Win</span>}
+        </div>
+        
+        <div className="flex items-center gap-4 shrink-0 font-black text-3xl">
+          <div className="flex items-center gap-1">
+            <Flag className="w-5 h-5 text-cyan-400" />
+            <span className={team1Won ? 'text-white' : 'text-gray-500'}>{match.team1Score}</span>
+          </div>
+          <span className="text-gray-700 text-base">VS</span>
+          <div className="flex items-center gap-1">
+            <span className={team2Won ? 'text-white' : 'text-gray-500'}>{match.team2Score}</span>
+            <Flag className="w-5 h-5 text-orange-400" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-[40%] justify-end">
+          {team2Won && <span className="bg-orange-600 text-white text-[10px] font-black px-2 py-1 rounded uppercase">Win</span>}
+          <span className={`text-base font-bold uppercase truncate text-right ${team2Won ? 'text-orange-400' : 'text-gray-400'}`}>{match.team2Name || 'Orange Team'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FreeForAllCard({ match, isLive }: { match: MatchData, isLive?: boolean }) {
+  const sortedStats = [...match.playerStats].sort((a, b) => b.score - a.score);
+  const topPlayer = sortedStats[0];
+  const secondPlayer = sortedStats[1];
+  const thirdPlayer = sortedStats[2];
+
+  return (
+    <div className="bg-[#120f06] rounded-xl border border-yellow-500/30 overflow-hidden shadow-xl flex flex-col">
+      <div className="flex items-center justify-between p-2 px-4 border-b border-yellow-500/20 bg-[#1f1906] shrink-0">
+        <div className="flex items-center gap-4">
+          <span className="text-gray-300 font-bold text-xl tracking-wider">
+            {format(parseISO(match.matchStartTimestamp), 'HH:mm')}
+          </span>
+          <div className="flex gap-3">
+            <span className="px-3 py-1 rounded bg-yellow-500/10 border border-yellow-500/30 text-sm text-yellow-400 uppercase tracking-widest font-bold flex items-center gap-1.5">
+              <Skull className="w-3.5 h-3.5 text-yellow-400" />
+              FREE FOR ALL
+            </span>
+            {isLive ? (
+              <span className="px-3 py-1 rounded bg-red-500/20 border border-red-500/30 text-sm text-red-400 font-bold tracking-widest flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                <LiveClock matchStartTimestamp={match.matchStartTimestamp} />
+              </span>
+            ) : getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp) && (
+              <span className="px-3 py-1 rounded bg-white/5 border border-white/10 text-sm text-gray-400 uppercase tracking-widest">
+                {getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Podium / Leader Highlight */}
+      <div className="p-4 bg-gradient-to-b from-yellow-500/10 via-black/40 to-transparent border-b border-yellow-500/20 shrink-0">
+        {topPlayer && (
+          <div className="flex items-center justify-between px-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-yellow-500/20 border-2 border-yellow-500 flex items-center justify-center text-yellow-400 font-black text-2xl shadow-[0_0_20px_rgba(234,179,8,0.5)]">
+                1
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-3">
+                  <span className="text-white font-black text-2xl uppercase tracking-wider">{topPlayer.playerName}</span>
+                  <span className="bg-yellow-500 text-yellow-950 text-xs font-black px-3 py-1 rounded-md uppercase tracking-widest shadow-md">Winner</span>
+                </div>
+                <div className="text-sm text-gray-400 tracking-wider mt-1">
+                  {topPlayer.kills} Kills • {topPlayer.deaths} Deaths • {topPlayer.assists} Assists
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end">
+              <div className="text-5xl font-black text-yellow-400 font-mono tracking-tight">
+                {topPlayer.score?.toLocaleString('no-NO')}
+              </div>
+              <span className="text-xs uppercase font-bold text-yellow-500/70 tracking-widest">Points</span>
+            </div>
+          </div>
+        )}
+
+        {(secondPlayer || thirdPlayer) && (
+          <div className="flex items-center justify-center gap-8 mt-3 pt-3 border-t border-white/5 text-sm">
+            {secondPlayer && (
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 font-black text-base">#2</span>
+                <span className="text-white font-bold">{secondPlayer.playerName}</span>
+                <span className="text-gray-400 font-mono">({secondPlayer.score} PTS • {secondPlayer.kills}K)</span>
+              </div>
+            )}
+            {thirdPlayer && (
+              <div className="flex items-center gap-2">
+                <span className="text-amber-600 font-black text-base">#3</span>
+                <span className="text-white font-bold">{thirdPlayer.playerName}</span>
+                <span className="text-gray-400 font-mono">({thirdPlayer.score} PTS • {thirdPlayer.kills}K)</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="p-3 flex-1 min-h-0 overflow-hidden">
+        <MiniFfaTable stats={match.playerStats} />
+      </div>
+    </div>
+  );
+}
+
+function CompactFfaMatchCard({ match }: { match: MatchData }) {
+  const sorted = [...match.playerStats].sort((a, b) => b.score - a.score);
+  const winner = sorted[0];
+  const second = sorted[1];
+  const duration = getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp);
+  const time = match.matchStartTimestamp ? format(parseISO(match.matchStartTimestamp), 'HH:mm') : '';
+
+  return (
+    <div className="bg-[#120f06] border border-yellow-500/20 rounded-xl overflow-hidden flex items-center p-4 relative">
+      <div className="w-16 shrink-0 flex flex-col items-center justify-center border-r border-white/5 pr-4">
+        <div className="text-white font-bold text-lg">{time}</div>
+        {duration && <div className="text-xs text-gray-500 uppercase tracking-widest mt-1">{duration}</div>}
+      </div>
+      <div className="flex-1 flex justify-between items-center pl-5 pr-2">
+        <div className="flex items-center gap-3">
+          <span className="bg-yellow-500 text-yellow-950 text-[10px] font-black px-2 py-0.5 rounded uppercase">1st</span>
+          <span className="text-lg font-black text-yellow-400 uppercase tracking-wide truncate max-w-[180px]">{winner?.playerName || 'Winner'}</span>
+          <span className="text-xs text-gray-400 font-mono">({winner?.kills} Kills)</span>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          {second && (
+            <span className="text-xs text-gray-400">
+              #2 <strong className="text-gray-300">{second.playerName}</strong> ({second.score})
+            </span>
+          )}
+          <div className="text-2xl font-black text-white font-mono">{winner?.score?.toLocaleString('no-NO')} <span className="text-xs font-bold text-yellow-500/80">PTS</span></div>
+        </div>
+      </div>
     </div>
   );
 }

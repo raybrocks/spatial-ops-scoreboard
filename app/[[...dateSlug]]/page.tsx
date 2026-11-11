@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { 
   Upload, Printer, Trash2, Trophy, Lock, Unlock, Edit2, Check, X, 
-  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Plus, Clock, Users 
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Plus, Clock, Users,
+  Flag, Skull, Target
 } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { useTournaments } from '@/hooks/use-tournaments';
@@ -14,7 +15,7 @@ import { MatchData, PlayerStat } from '@/types/match';
 import { getTournamentsForDate, getTournamentTitle, groupMatchesByTournament, TournamentGroup } from '@/lib/tournaments';
 import { getSurvivalHighscores, HighscoreLevel } from '@/lib/survival-highscores';
 import { HighscoreBadge } from '@/components/HighscoreBadge';
-import { TdmBanner, SurvivalBanner } from '@/components/SectionTitles';
+import { TdmBanner, SurvivalBanner, CtfBanner, FfaBanner } from '@/components/SectionTitles';
 
 const formatGameMode = (mode?: string) => {
   if (!mode) return '';
@@ -22,6 +23,7 @@ const formatGameMode = (mode?: string) => {
   const lower = mode.toLowerCase();
   if (lower === 'teamdeathmatch') displayMode = 'TEAM DEATHMATCH';
   else if (lower === 'freeforall') displayMode = 'FREE FOR ALL';
+  else if (lower === 'capturetheflag') displayMode = 'CAPTURE THE FLAG';
   else displayMode = mode.toUpperCase();
   return displayMode;
 };
@@ -817,19 +819,25 @@ function TournamentContent({
   const [showMatchDetails, setShowMatchDetails] = useState(false);
   const matches = group.matches;
 
-  const { tdmMatches, survivalMatches } = useMemo(() => {
+  const { tdmMatches, ctfMatches, ffaMatches, survivalMatches } = useMemo(() => {
     const tdm: MatchData[] = [];
+    const ctf: MatchData[] = [];
+    const ffa: MatchData[] = [];
     const survival: MatchData[] = [];
     
     matches.forEach(m => {
       const mode = m.gameMode?.toLowerCase() || '';
       if (mode === 'survival') {
         survival.push(m);
-      } else if (mode !== 'freeforall') {
+      } else if (mode === 'capturetheflag') {
+        ctf.push(m);
+      } else if (mode === 'freeforall') {
+        ffa.push(m);
+      } else {
         tdm.push(m);
       }
     });
-    return { tdmMatches: tdm, survivalMatches: survival };
+    return { tdmMatches: tdm, ctfMatches: ctf, ffaMatches: ffa, survivalMatches: survival };
   }, [matches]);
 
   const tdmDailySummary = useMemo(() => {
@@ -892,6 +900,98 @@ function TournamentContent({
       .filter(p => !p.isBot)
       .sort((a, b) => b.score - a.score);
   }, [tdmMatches]);
+
+  const ctfDailySummary = useMemo(() => {
+    const summary: Record<string, { matches: number, flags: number, wins: number }> = {};
+    
+    ctfMatches.forEach(match => {
+      const t1 = (match.team1Name || 'Team 1').toUpperCase();
+      const t2 = (match.team2Name || 'Team 2').toUpperCase();
+      
+      if (!summary[t1]) summary[t1] = { matches: 0, flags: 0, wins: 0 };
+      if (!summary[t2]) summary[t2] = { matches: 0, flags: 0, wins: 0 };
+      
+      summary[t1].matches += 1;
+      summary[t1].flags += match.team1Score;
+      if (match.team1Score > match.team2Score) summary[t1].wins += 1;
+      
+      summary[t2].matches += 1;
+      summary[t2].flags += match.team2Score;
+      if (match.team2Score > match.team1Score) summary[t2].wins += 1;
+    });
+    
+    return Object.entries(summary)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.flags - a.flags);
+  }, [ctfMatches]);
+
+  const ctfPlayerSummary = useMemo(() => {
+    const summary: Record<string, { score: number, flags: number, kills: number, deaths: number, assists: number, matches: number, mvps: number, isBot: boolean, teamName: string }> = {};
+    
+    ctfMatches.forEach(match => {
+      const t1Stats = match.playerStats.filter(p => p.team === 1).sort((a, b) => b.score - a.score);
+      const t2Stats = match.playerStats.filter(p => p.team === 2).sort((a, b) => b.score - a.score);
+      
+      const t1Mvp = t1Stats.length > 0 && t1Stats[0].score > 0 && !t1Stats[0].isBot ? t1Stats[0].playerName : null;
+      const t2Mvp = t2Stats.length > 0 && t2Stats[0].score > 0 && !t2Stats[0].isBot ? t2Stats[0].playerName : null;
+
+      match.playerStats.forEach(player => {
+        if (!summary[player.playerName]) {
+          summary[player.playerName] = { score: 0, flags: 0, kills: 0, deaths: 0, assists: 0, matches: 0, mvps: 0, isBot: player.isBot, teamName: '' };
+        }
+        
+        if (!summary[player.playerName].teamName) {
+          summary[player.playerName].teamName = player.team === 1 ? (match.team1Name || 'Team 1').toUpperCase() : (match.team2Name || 'Team 2').toUpperCase();
+        }
+
+        summary[player.playerName].score += player.score;
+        summary[player.playerName].flags += (player.objectives || 0);
+        summary[player.playerName].kills += player.kills;
+        summary[player.playerName].deaths += player.deaths || 0;
+        summary[player.playerName].assists += player.assists || 0;
+        summary[player.playerName].matches += 1;
+        
+        if (!player.isBot && (player.playerName === t1Mvp || player.playerName === t2Mvp)) {
+          summary[player.playerName].mvps += 1;
+        }
+      });
+    });
+
+    return Object.entries(summary)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .filter(p => !p.isBot)
+      .sort((a, b) => b.flags !== a.flags ? b.flags - a.flags : b.score - a.score);
+  }, [ctfMatches]);
+
+  const ffaPlayerSummary = useMemo(() => {
+    const summary: Record<string, { score: number, kills: number, deaths: number, assists: number, matches: number, wins: number, isBot: boolean }> = {};
+    
+    ffaMatches.forEach(match => {
+      const sortedPlayers = [...match.playerStats].sort((a, b) => b.score - a.score);
+      const winnerName = sortedPlayers.length > 0 && sortedPlayers[0].score > 0 ? sortedPlayers[0].playerName : null;
+
+      match.playerStats.forEach(player => {
+        if (!summary[player.playerName]) {
+          summary[player.playerName] = { score: 0, kills: 0, deaths: 0, assists: 0, matches: 0, wins: 0, isBot: player.isBot };
+        }
+
+        summary[player.playerName].score += player.score;
+        summary[player.playerName].kills += player.kills;
+        summary[player.playerName].deaths += player.deaths || 0;
+        summary[player.playerName].assists += player.assists || 0;
+        summary[player.playerName].matches += 1;
+        
+        if (winnerName && player.playerName === winnerName && !player.isBot) {
+          summary[player.playerName].wins += 1;
+        }
+      });
+    });
+
+    return Object.entries(summary)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .filter(p => !p.isBot)
+      .sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.score - a.score);
+  }, [ffaMatches]);
 
   const survivalTeamSummary = useMemo(() => {
     return [...survivalMatches].sort((a, b) => {
@@ -1009,6 +1109,147 @@ function TournamentContent({
           </div>
         )}
 
+        {/* CAPTURE THE FLAG SUMMARY */}
+        {ctfMatches.length > 0 && (
+          <div className="mb-8 border-b border-white/5 pb-8 print:border-none print:pb-0">
+            <CtfBanner />
+
+            {/* CTF Team Stats */}
+            {ctfDailySummary.length > 0 && (
+              <div className="mb-6 print-section">
+                <h2 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-4 print:text-black">Team Leaderboard</h2>
+                <div className="flex flex-col gap-3 print:gap-2">
+                  {ctfDailySummary.map((team, idx) => {
+                    const placement = idx + 1;
+                    return (
+                      <div key={team.name} className={`relative overflow-hidden ${idx === 0 ? 'bg-cyan-950/30 border-2 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)]' : 'bg-[#121212] border border-white/10 opacity-70'} rounded-xl p-3 sm:p-4 print:bg-transparent print:border-gray-300 print:p-2 transition-all flex items-center justify-between gap-2 sm:gap-4`}>
+                        {idx === 0 && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.8)] z-10 print:hidden"></div>}
+                        
+                        <div className="flex items-center gap-3 sm:gap-5 z-20 pl-1 sm:pl-2 min-w-0 flex-1">
+                          <div className={`text-2xl sm:text-4xl font-black ${idx === 0 ? 'text-cyan-400' : 'text-gray-600'} w-6 sm:w-8 shrink-0 text-right`}>{placement}</div>
+                          
+                          <div className="flex flex-col min-w-0 flex-1 justify-center">
+                            {idx === 0 && (
+                              <div className="mb-1">
+                                <span className="bg-cyan-500 text-cyan-950 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-widest uppercase inline-block print:hidden">
+                                  Leading Team
+                                </span>
+                              </div>
+                            )}
+                            <div className={`text-sm sm:text-lg md:text-xl font-bold uppercase tracking-wider truncate ${idx === 0 ? 'text-white' : 'text-gray-300'}`}>
+                              {team.name}
+                            </div>
+                            <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-0.5 print:text-black print:text-[8px] truncate">
+                              {team.wins} Win{team.wins !== 1 && 's'} • {team.flags} Flag{team.flags !== 1 && 's'} Captured in {team.matches} Match{team.matches !== 1 && 'es'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-2xl sm:text-4xl md:text-5xl font-black text-cyan-400 tracking-tighter shrink-0 pr-1 sm:pr-2 print:text-black print:text-2xl text-right">
+                          <Flag className="w-6 h-6 sm:w-8 sm:h-8 fill-cyan-400/20" />
+                          <span>{team.flags}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* CTF Player Leaderboard */}
+            {ctfPlayerSummary.length > 0 && (
+              <div className="print-section">
+                <h2 className="text-sm font-bold tracking-widest uppercase text-cyan-400 mb-4 print:text-black">Player Leaderboard (Flags & Score)</h2>
+                <div className="bg-[#121212] border border-cyan-900/30 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[500px]">
+                      <thead className="bg-[#0b161b] print:bg-gray-100">
+                        <tr className="text-[10px] uppercase tracking-widest text-cyan-400/80 print:text-black print:text-[8px]">
+                          <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#0b161b] z-10 print:static print:bg-transparent">Player</th>
+                          <th className="py-2 px-2 font-bold truncate print:py-1 print:px-1 min-w-[70px]">Team</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1 text-cyan-300">Flags</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Score</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Kills</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Deaths</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">AST</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Matches</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">MVPs</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
+                        {ctfPlayerSummary.map((player, idx) => (
+                          <tr key={player.name} className={`group hover:bg-[#0d1a20] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#061e27]/50' : 'bg-[#121212]'}`}>
+                            <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
+                              <span className="text-cyan-500/70 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
+                              <span className={`truncate ${idx === 0 ? 'text-cyan-400 font-bold' : ''}`}>{player.name}</span>
+                            </td>
+                            <td className="py-2 px-2 text-gray-500 text-[9px] uppercase tracking-widest truncate print:text-gray-600 print:py-1 print:px-1">{player.teamName}</td>
+                            <td className="py-2 px-2 font-mono text-center font-black text-cyan-400 bg-cyan-950/20 print:py-1 print:px-1 print:text-black">{player.flags}</td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score?.toLocaleString('no-NO')}</td>
+                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.kills}</td>
+                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.deaths}</td>
+                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.assists}</td>
+                            <td className="py-2 px-2 text-center text-gray-500 print:py-1 print:px-1 print:text-black">{player.matches}</td>
+                            <td className="py-2 px-2 text-center text-cyan-400/80 print:py-1 print:px-1 print:text-black">{player.mvps > 0 ? player.mvps : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* FREE FOR ALL SUMMARY */}
+        {ffaMatches.length > 0 && (
+          <div className="mb-8 border-b border-white/5 pb-8 print:border-none print:pb-0">
+            <FfaBanner />
+
+            {/* FFA Player Leaderboard */}
+            {ffaPlayerSummary.length > 0 && (
+              <div className="print-section">
+                <h2 className="text-sm font-bold tracking-widest uppercase text-yellow-500 mb-4 print:text-black">Solo Player Leaderboard</h2>
+                <div className="bg-[#141208] border border-yellow-500/20 rounded-lg overflow-hidden print:bg-transparent print:border-gray-300">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[500px]">
+                      <thead className="bg-[#211a05] print:bg-gray-100">
+                        <tr className="text-[10px] uppercase tracking-widest text-yellow-500/80 print:text-black print:text-[8px]">
+                          <th className="py-2 px-3 font-bold truncate print:py-1 print:px-2 min-w-[120px] sticky left-0 bg-[#211a05] z-10 print:static print:bg-transparent">Player</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1 text-yellow-400">1st Wins</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Total Score</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Kills</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Deaths</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">AST</th>
+                          <th className="py-2 px-2 font-bold text-center min-w-[50px] print:py-1 print:px-1">Matches</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-xs print:divide-gray-200 print:text-[10px]">
+                        {ffaPlayerSummary.map((player, idx) => (
+                          <tr key={player.name} className={`group hover:bg-[#261f0a] print:bg-transparent transition-colors ${idx === 0 ? 'bg-[#2a2205]' : 'bg-[#141208]'}`}>
+                            <td className="py-2 px-3 font-medium text-gray-300 print:text-black print:py-1 print:px-2 flex items-center gap-2 sticky left-0 z-10 bg-inherit print:static print:bg-transparent border-r border-transparent print:border-none">
+                              <span className="text-yellow-500/70 w-3 text-right text-[10px] print:text-[8px] print:text-gray-600">{idx + 1}.</span>
+                              <span className={`truncate ${idx === 0 ? 'text-yellow-400 font-black' : ''}`}>{player.name}</span>
+                              {idx === 0 && <span className="text-[9px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-1.5 py-0.2 rounded font-black tracking-widest uppercase">Leader</span>}
+                            </td>
+                            <td className="py-2 px-2 font-mono text-center font-black text-yellow-400 bg-yellow-500/10 print:py-1 print:px-1 print:text-black">{player.wins}</td>
+                            <td className="py-2 px-2 font-mono text-center font-bold text-white print:py-1 print:px-1 print:text-black">{player.score?.toLocaleString('no-NO')}</td>
+                            <td className="py-2 px-2 text-center text-gray-300 print:py-1 print:px-1 print:text-black">{player.kills}</td>
+                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.deaths}</td>
+                            <td className="py-2 px-2 text-center text-gray-400 print:py-1 print:px-1 print:text-black">{player.assists}</td>
+                            <td className="py-2 px-2 text-center text-gray-500 print:py-1 print:px-1 print:text-black">{player.matches}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* SURVIVAL SUMMARY */}
         {survivalMatches.length > 0 && (
           <div className="mb-8 print-section">
@@ -1087,14 +1328,28 @@ function TournamentContent({
             const team2Won = match.team2Score > match.team1Score;
             const duration = getMatchDuration(match.matchStartTimestamp, match.lastUpdateTimestamp);
             const isSurvival = match.gameMode?.toLowerCase() === 'survival';
+            const isCtf = match.gameMode?.toLowerCase() === 'capturetheflag';
+            const isFfa = match.gameMode?.toLowerCase() === 'freeforall';
+
+            // For FFA: Sort players by score to find podium winner
+            const ffaSorted = isFfa ? [...match.playerStats].sort((a, b) => b.score - a.score) : [];
+            const ffaWinner = ffaSorted.length > 0 ? ffaSorted[0] : null;
+            const ffaSecond = ffaSorted.length > 1 ? ffaSorted[1] : null;
+            const ffaThird = ffaSorted.length > 2 ? ffaSorted[2] : null;
+
+            const borderClass = isSelected
+              ? `print-section ring-2 ${isSurvival ? 'border-red-500 ring-red-900/50' : isCtf ? 'border-cyan-500 ring-cyan-900/50' : isFfa ? 'border-yellow-500 ring-yellow-900/50' : 'border-gray-500 ring-gray-700/50'}`
+              : `no-print ${isSurvival ? 'border-red-900/30' : isCtf ? 'border-cyan-900/30' : isFfa ? 'border-yellow-500/20' : 'border-white/10'}`;
+
+            const bgClass = isSurvival ? 'bg-[#0a0505]' : isCtf ? 'bg-[#051117]' : isFfa ? 'bg-[#120f06]' : 'bg-[#121212]';
 
             return (
               <div 
                 key={match.matchId} 
-                className={`rounded-xl border flex flex-col transition-all overflow-hidden ${isSelected ? `print-section ring-2 ${isSurvival ? 'border-red-500 ring-red-900/50' : 'border-gray-500 ring-gray-700/50'}` : `no-print ${isSurvival ? 'border-red-900/30' : 'border-white/10'}`} ${isSurvival ? 'bg-[#0a0505]' : 'bg-[#121212]'}`}
+                className={`rounded-xl border flex flex-col transition-all overflow-hidden ${borderClass} ${bgClass}`}
               >
                 {/* Match Header */}
-                <div className={`flex items-center justify-between p-2 md:p-3 border-b ${isSurvival ? 'border-red-900/30 bg-[#1a0a0a]' : 'border-white/10 bg-[#0D0D0D]'} print:p-1.5 print:bg-gray-100 print:border-gray-300`}>
+                <div className={`flex items-center justify-between p-2 md:p-3 border-b ${isSurvival ? 'border-red-900/30 bg-[#1a0a0a]' : isCtf ? 'border-cyan-900/30 bg-[#071922]' : isFfa ? 'border-yellow-500/20 bg-[#1f1906]' : 'border-white/10 bg-[#0D0D0D]'} print:p-1.5 print:bg-gray-100 print:border-gray-300`}>
                   <div className="flex items-center gap-2 text-xs">
                     <input 
                       type="checkbox" 
@@ -1106,10 +1361,12 @@ function TournamentContent({
                     <span className="text-gray-400 font-bold print:text-black">
                       {format(parseISO(match.matchStartTimestamp), 'dd.MM.yy HH:mm')}
                     </span>
-                    <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-300 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black">
+                    <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-300 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black flex items-center gap-1">
+                      {isCtf && <Flag className="w-2.5 h-2.5 text-cyan-400" />}
+                      {isFfa && <Skull className="w-2.5 h-2.5 text-yellow-400" />}
                       {formatGameMode(match.gameMode)}
                     </span>
-                    {match.gameMode?.toLowerCase() === 'survival' && match.lifeMode && (
+                    {isSurvival && match.lifeMode && (
                       <span className="px-1.5 py-0.5 rounded bg-gray-900/30 border border-gray-500/20 text-[9px] text-gray-300 uppercase tracking-widest print:text-[6px] print:bg-gray-200 print:border-gray-400 print:text-black">
                         {formatLifeMode(match.lifeMode)}
                       </span>
@@ -1135,12 +1392,65 @@ function TournamentContent({
                 </div>
 
                 {/* Score Overview */}
-                {!isSurvival ? (
+                {isFfa ? (
+                  <div className="p-3 bg-gradient-to-b from-yellow-500/10 via-black/30 to-transparent border-b border-yellow-500/20 flex flex-col items-center">
+                    {ffaWinner && (
+                      <div className="flex items-center justify-between w-full px-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-yellow-500/20 border-2 border-yellow-500/60 flex items-center justify-center text-yellow-400 font-black text-sm shadow-[0_0_12px_rgba(234,179,8,0.4)]">
+                            1
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-white font-black text-sm uppercase tracking-wide truncate max-w-[130px]">{ffaWinner.playerName}</span>
+                              <span className="bg-yellow-500 text-yellow-950 text-[8px] font-black px-1.5 py-0.2 rounded uppercase tracking-wider">Winner</span>
+                            </div>
+                            <span className="text-[10px] text-gray-400">{ffaWinner.kills} Kills • {ffaWinner.deaths} Deaths</span>
+                          </div>
+                        </div>
+                        <div className="text-2xl sm:text-3xl font-black text-yellow-400 font-mono tracking-tight text-right">
+                          {ffaWinner.score?.toLocaleString('no-NO')} <span className="text-[10px] font-bold text-yellow-500/70 block sm:inline">PTS</span>
+                        </div>
+                      </div>
+                    )}
+                    {ffaSorted.length > 1 && (
+                      <div className="flex items-center justify-center gap-4 mt-2.5 pt-2 border-t border-white/5 w-full text-[10px] text-gray-400">
+                        {ffaSecond && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-400 font-bold">#2</span>
+                            <span className="text-gray-200 font-medium truncate max-w-[90px]">{ffaSecond.playerName}</span>
+                            <span className="font-mono text-gray-400 font-bold">({ffaSecond.score})</span>
+                          </div>
+                        )}
+                        {ffaThird && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-amber-600 font-bold">#3</span>
+                            <span className="text-gray-200 font-medium truncate max-w-[90px]">{ffaThird.playerName}</span>
+                            <span className="font-mono text-gray-400 font-bold">({ffaThird.score})</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : isSurvival ? (
+                  <div className="p-3 flex justify-center items-center gap-3 bg-[#1a0a0a] border-b border-red-900/30 print:bg-transparent print:border-gray-200 print:p-1.5 relative">
+                    <div className="flex flex-col items-center">
+                      <span className="text-red-500 font-bold uppercase tracking-widest text-xs print:text-black print:text-[10px]">Survival Mode {duration ? ` ${duration}` : ''}</span>
+                      {match.waveIndex !== undefined && (
+                        <span className="text-2xl font-black text-white mt-1 print:text-black">Wave {match.waveIndex + 1}</span>
+                      )}
+                      <span className="text-[10px] text-red-400/70 uppercase tracking-widest mt-1 print:text-gray-600 print:text-[8px]">Team Score: <span className="text-red-400 font-bold">{match.team1Score?.toLocaleString('no-NO')}</span></span>
+                      <div className="mt-2">
+                        <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                   <div className="p-3 flex justify-between items-center gap-3 print:p-1.5 print:gap-1">
                     {/* Team 1 */}
-                    <div className={`flex-1 rounded-lg p-2 pt-5 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 print:pt-1 ${team1Won ? 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'bg-blue-950/10 border border-blue-500/10 opacity-70'}`}>
-                      {team1Won && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden">Winner</div>}
-                      <div className="text-blue-400 font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10">
+                    <div className={`flex-1 rounded-lg p-2 pt-5 flex flex-col justify-center items-center relative overflow-hidden transition-all print:bg-transparent print:border-gray-200 print:p-1 print:pt-1 ${team1Won ? (isCtf ? 'bg-cyan-950/40 border-2 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)]' : 'bg-blue-900/30 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]') : (isCtf ? 'bg-cyan-950/10 border border-cyan-500/10 opacity-70' : 'bg-blue-950/10 border border-blue-500/10 opacity-70')}`}>
+                      {team1Won && <div className={`absolute top-0 right-0 ${isCtf ? 'bg-cyan-500' : 'bg-blue-500'} text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-md tracking-widest uppercase print:hidden`}>Winner</div>}
+                      <div className={`${isCtf ? 'text-cyan-400' : 'text-blue-400'} font-bold uppercase text-[10px] flex items-center justify-center gap-1 w-full relative min-h-[20px] print:text-black print:text-[8px] print:min-h-0 z-10`}>
                         {editingTeam?.matchId === match.matchId && editingTeam.team === 1 ? (
                            <div className="flex items-center gap-1 z-20">
                              <input 
@@ -1156,7 +1466,7 @@ function TournamentContent({
                         ) : (
                           <div className="flex items-center justify-center gap-1.5 flex-wrap">
                             <span className={`truncate max-w-[90px] sm:max-w-[120px] print:max-w-full ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
-                            <span className="shrink-0 text-[7px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1 py-0.5 rounded tracking-widest print-color-blue print:text-[5px]">BLUE</span>
+                            <span className={`shrink-0 text-[7px] ${isCtf ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'} border px-1 py-0.5 rounded tracking-widest print-color-blue print:text-[5px]`}>BLUE</span>
                             {team1Won && <span className="hidden print:inline-block text-[6px] print:bg-gray-200 print:text-black px-1 py-0.5 rounded">WIN</span>}
                             {isAdminMode && (
                               <button 
@@ -1170,7 +1480,18 @@ function TournamentContent({
                           </div>
                         )}
                       </div>
-                      <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score?.toLocaleString('no-NO')}</div>
+                      
+                      {isCtf ? (
+                        <div className="flex items-center gap-1.5 mt-1 z-10">
+                          <Flag className="w-5 h-5 text-cyan-400 fill-cyan-400/20" />
+                          <div className={`text-3xl font-black print:text-black print:text-lg ${team1Won ? 'text-white' : 'text-cyan-200/50'}`}>
+                            {match.team1Score}
+                          </div>
+                          <span className="text-[9px] uppercase font-bold text-cyan-400/80 tracking-widest">Flags</span>
+                        </div>
+                      ) : (
+                        <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team1Won ? 'text-white' : 'text-blue-200/50'}`}>{match.team1Score?.toLocaleString('no-NO')}</div>
+                      )}
                     </div>
                     
                     <div className="text-gray-600 font-black text-xs uppercase tracking-widest print:text-black print:text-[8px]">VS</div>
@@ -1208,29 +1529,33 @@ function TournamentContent({
                           </div>
                         )}
                       </div>
-                      <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score?.toLocaleString('no-NO')}</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 flex justify-center items-center gap-3 bg-[#1a0a0a] border-b border-red-900/30 print:bg-transparent print:border-gray-200 print:p-1.5 relative">
-                    <div className="flex flex-col items-center">
-                      <span className="text-red-500 font-bold uppercase tracking-widest text-xs print:text-black print:text-[10px]">Survival Mode {duration ? ` ${duration}` : ''}</span>
-                      {match.waveIndex !== undefined && (
-                        <span className="text-2xl font-black text-white mt-1 print:text-black">Wave {match.waveIndex + 1}</span>
+                      
+                      {isCtf ? (
+                        <div className="flex items-center gap-1.5 mt-1 z-10">
+                          <Flag className="w-5 h-5 text-orange-400 fill-orange-400/20" />
+                          <div className={`text-3xl font-black print:text-black print:text-lg ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>
+                            {match.team2Score}
+                          </div>
+                          <span className="text-[9px] uppercase font-bold text-orange-400/80 tracking-widest">Flags</span>
+                        </div>
+                      ) : (
+                        <div className={`text-3xl font-black mt-1 z-10 print:text-black print:text-lg ${team2Won ? 'text-white' : 'text-orange-200/50'}`}>{match.team2Score?.toLocaleString('no-NO')}</div>
                       )}
-                      <span className="text-[10px] text-red-400/70 uppercase tracking-widest mt-1 print:text-gray-600 print:text-[8px]">Team Score: <span className="text-red-400 font-bold">{match.team1Score?.toLocaleString('no-NO')}</span></span>
-                      <div className="mt-2">
-                        <HighscoreBadge level={survivalHighscores.get(match.matchId) || 'NONE'} />
-                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Player Stats Tables */}
-                <div className={`px-3 pb-3 grid grid-cols-1 gap-3 flex-1 print:p-1.5 print:gap-2 ${isSurvival ? '' : 'print:grid-cols-2'}`}>
-                  <TeamTable teamName="Team 1" stats={match.playerStats.filter(p => p.team === 1)} color={isSurvival ? 'red' : 'blue'} isSurvival={isSurvival} />
-                  {!isSurvival && (
-                    <TeamTable teamName="Team 2" stats={match.playerStats.filter(p => p.team === 2)} color="orange" />
+                <div className={`px-3 pb-3 grid grid-cols-1 gap-3 flex-1 print:p-1.5 print:gap-2 ${isSurvival || isFfa ? '' : 'print:grid-cols-2'}`}>
+                  {isFfa ? (
+                    <FfaTable stats={match.playerStats} />
+                  ) : (
+                    <>
+                      <TeamTable teamName="Team 1" stats={match.playerStats.filter(p => p.team === 1)} color={isSurvival ? 'red' : isCtf ? 'blue' : 'blue'} isSurvival={isSurvival} isCtf={isCtf} />
+                      {!isSurvival && (
+                        <TeamTable teamName="Team 2" stats={match.playerStats.filter(p => p.team === 2)} color="orange" isCtf={isCtf} />
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -1242,8 +1567,8 @@ function TournamentContent({
   );
 }
 
-function TeamTable({ teamName, stats, color, isSurvival }: { teamName: string, stats: PlayerStat[], color: 'blue' | 'red' | 'orange', isSurvival?: boolean }) {
-  const sortedStats = [...stats].sort((a, b) => b.score - a.score);
+function TeamTable({ teamName, stats, color, isSurvival, isCtf }: { teamName: string, stats: PlayerStat[], color: 'blue' | 'red' | 'orange', isSurvival?: boolean, isCtf?: boolean }) {
+  const sortedStats = [...stats].sort((a, b) => isCtf ? ((b.objectives || 0) !== (a.objectives || 0) ? (b.objectives || 0) - (a.objectives || 0) : b.score - a.score) : b.score - a.score);
   
   const textColor = color === 'blue' ? 'text-blue-400' : (color === 'red' ? 'text-red-400' : 'text-orange-400');
   const rowHighlight = color === 'blue' ? 'bg-blue-500/5' : (color === 'red' ? 'bg-red-500/5' : 'bg-orange-500/5');
@@ -1255,21 +1580,22 @@ function TeamTable({ teamName, stats, color, isSurvival }: { teamName: string, s
         <table className="w-full text-left border-collapse table-fixed">
           <thead className="bg-white/5 print:bg-gray-100">
             <tr className="text-[8px] uppercase tracking-widest text-gray-500 print:text-black print:text-[6px]">
-              <th className="py-1.5 px-2 font-bold truncate print:py-0.5 print:px-1">Player</th>
-              <th className="py-1.5 px-1 font-bold text-center w-[18%] print:py-0.5 print:px-0.5" title="Score">Score</th>
-              <th className="py-1.5 px-1 font-bold text-center w-[12%] print:py-0.5 print:px-0.5" title="Kills">Kills</th>
-              <th className="py-1.5 px-1 font-bold text-center w-[12%] print:py-0.5 print:px-0.5" title="Deaths">Deaths</th>
-              <th className="py-1.5 px-1 font-bold text-center w-[12%] print:py-0.5 print:px-0.5" title="Assists">AST</th>
+              <th className={`py-1.5 px-2 font-bold truncate print:py-0.5 print:px-1 ${isCtf ? 'w-[32%]' : 'w-[40%]'}`}>Player</th>
+              {isCtf && <th className="py-1.5 px-1 font-bold text-center w-[16%] print:py-0.5 print:px-0.5 text-cyan-400" title="Flags (Objectives)">Flags</th>}
+              <th className={`py-1.5 px-1 font-bold text-center ${isCtf ? 'w-[16%]' : 'w-[18%]'} print:py-0.5 print:px-0.5`} title="Score">Score</th>
+              <th className={`py-1.5 px-1 font-bold text-center ${isCtf ? 'w-[12%]' : 'w-[14%]'} print:py-0.5 print:px-0.5`} title="Kills">Kills</th>
+              <th className={`py-1.5 px-1 font-bold text-center ${isCtf ? 'w-[12%]' : 'w-[14%]'} print:py-0.5 print:px-0.5`} title="Deaths">Deaths</th>
+              <th className={`py-1.5 px-1 font-bold text-center ${isCtf ? 'w-[12%]' : 'w-[14%]'} print:py-0.5 print:px-0.5`} title="Assists">AST</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5 text-[10px] print:divide-gray-200 print:text-[8px]">
             {sortedStats.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-2 py-2 text-center text-gray-600 italic print:py-0.5">No players recorded</td>
+                <td colSpan={isCtf ? 6 : 5} className="px-2 py-2 text-center text-gray-600 italic print:py-0.5">No players recorded</td>
               </tr>
             ) : (
               sortedStats.map((player, idx) => {
-                const isMVP = !isSurvival && idx === 0 && player.score > 0;
+                const isMVP = !isSurvival && idx === 0 && (player.score > 0 || (player.objectives || 0) > 0);
                 return (
                   <tr key={idx} className={`hover:bg-white/[0.02] print:bg-transparent ${isMVP && !player.isBot ? rowHighlight : player.isBot ? 'opacity-70 italic' : ''}`}>
                     <td className="py-1.5 px-2 font-medium text-gray-300 print:text-black print:py-0.5 print:px-1 truncate">
@@ -1285,8 +1611,71 @@ function TeamTable({ teamName, stats, color, isSurvival }: { teamName: string, s
                         )}
                       </div>
                     </td>
+                    {isCtf && (
+                      <td className="py-1.5 px-1 font-mono text-center font-black text-cyan-400 print:py-0.5 print:text-black">
+                        {player.objectives || 0}
+                      </td>
+                    )}
                     <td className={`py-1.5 px-1 font-mono text-center print:py-0.5 print:text-black ${textColor}`}>{player.score?.toLocaleString('no-NO')}</td>
                     <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.kills}</td>
+                    <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.deaths}</td>
+                    <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.assists}</td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function FfaTable({ stats }: { stats: PlayerStat[] }) {
+  const sortedStats = [...stats].sort((a, b) => b.score - a.score);
+
+  return (
+    <div className="bg-white/5 border border-yellow-500/20 rounded-md overflow-hidden print:border-gray-200 print:bg-transparent">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse table-fixed">
+          <thead className="bg-[#1c1606] print:bg-gray-100">
+            <tr className="text-[8px] uppercase tracking-widest text-yellow-500/80 print:text-black print:text-[6px]">
+              <th className="py-1.5 px-1 font-bold text-center w-[10%]">#</th>
+              <th className="py-1.5 px-2 font-bold truncate print:py-0.5 print:px-1 w-[42%]">Player</th>
+              <th className="py-1.5 px-1 font-bold text-center w-[18%] print:py-0.5 print:px-0.5">Score</th>
+              <th className="py-1.5 px-1 font-bold text-center w-[10%] print:py-0.5 print:px-0.5">Kills</th>
+              <th className="py-1.5 px-1 font-bold text-center w-[10%] print:py-0.5 print:px-0.5">Deaths</th>
+              <th className="py-1.5 px-1 font-bold text-center w-[10%] print:py-0.5 print:px-0.5">AST</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-[10px] print:divide-gray-200 print:text-[8px]">
+            {sortedStats.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-2 py-2 text-center text-gray-600 italic print:py-0.5">No players recorded</td>
+              </tr>
+            ) : (
+              sortedStats.map((player, idx) => {
+                const isWinner = idx === 0 && player.score > 0;
+                return (
+                  <tr key={idx} className={`hover:bg-white/[0.02] print:bg-transparent ${isWinner && !player.isBot ? 'bg-yellow-500/10' : player.isBot ? 'opacity-70 italic' : ''}`}>
+                    <td className="py-1.5 px-1 text-center font-bold text-gray-500">
+                      {idx === 0 ? <span className="text-yellow-400 font-black">1</span> : idx + 1}
+                    </td>
+                    <td className="py-1.5 px-2 font-medium text-gray-300 print:text-black print:py-0.5 print:px-1 truncate">
+                      <div className="flex items-center gap-1 w-full truncate">
+                        <span className={`truncate ${isWinner && !player.isBot ? 'font-bold text-yellow-400 print:text-black' : ''}`} title={player.playerName}>
+                          {player.playerName}
+                        </span>
+                        {isWinner && !player.isBot && (
+                          <span className="shrink-0 text-[7px] px-1 rounded uppercase tracking-wider font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">1ST</span>
+                        )}
+                        {player.isBot && (
+                          <span className="shrink-0 text-[7px] border border-white/20 text-gray-500 px-1 rounded uppercase font-bold print:border-gray-300 print:text-[5px]">Bot</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-1.5 px-1 font-mono text-center font-bold text-yellow-400 print:py-0.5 print:text-black">{player.score?.toLocaleString('no-NO')}</td>
+                    <td className="py-1.5 px-1 text-center text-gray-300 print:py-0.5 print:text-black">{player.kills}</td>
                     <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.deaths}</td>
                     <td className="py-1.5 px-1 text-center text-gray-400 print:py-0.5 print:text-black">{player.assists}</td>
                   </tr>
