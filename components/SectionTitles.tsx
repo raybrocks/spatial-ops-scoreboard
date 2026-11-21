@@ -82,13 +82,13 @@ export function CtfBanner() {
           </h1>
         </div>
         
-        <div className="relative -mt-3 sm:-mt-5 text-sm sm:text-2xl font-black tracking-widest uppercase flex items-center justify-center gap-4 sm:gap-6 print:text-gray-700 z-20">
-          {/* Large crossed textured Orange (left) & Blue/Cyan (right) flags overlapping behind/through elements like TDM lightning */}
+        <div className="relative -mt-3 sm:-mt-5 text-sm sm:text-2xl font-black tracking-widest uppercase flex items-center justify-center print:text-gray-700 z-20">
+          {/* Crossed textured Orange (left) & Blue/Cyan (right) flags in front of team boxes, behind VS */}
           <svg
             viewBox="0 0 280 200"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="absolute inset-0 m-auto w-60 h-40 sm:w-80 sm:h-52 -translate-y-3 sm:-translate-y-4 scale-125 z-0 pointer-events-none opacity-90 drop-shadow-[0_0_20px_rgba(0,0,0,0.95)] print:hidden"
+            className="absolute inset-0 m-auto w-[106px] h-[77px] sm:w-[154px] sm:h-[106px] -translate-y-2 sm:-translate-y-3 z-20 pointer-events-none opacity-75 drop-shadow-[0_0_16px_rgba(0,0,0,0.95)] print:hidden"
           >
             <defs>
               {/* Tactical ripstop / woven cloth texture */}
@@ -200,7 +200,7 @@ export function CtfBanner() {
             Blue Team
           </span>
 
-          <span className="hidden print:inline text-black italic text-3xl font-black px-2 z-10">VS</span>
+          <span className="text-white italic text-4xl sm:text-6xl font-black z-30 drop-shadow-[0_5px_10px_rgba(0,0,0,0.9)] -mx-3 sm:-mx-5 scale-110 print:text-black">VS</span>
 
           <span className="bg-orange-950/80 border-4 border-orange-500 text-orange-400 px-4 py-1 sm:px-8 sm:py-2 rounded-r-lg shadow-[0_0_20px_rgba(249,115,22,0.6),inset_0_0_15px_rgba(249,115,22,0.4)] z-10 -skew-x-12 transform">
             Orange Team
