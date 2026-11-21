@@ -82,8 +82,8 @@ export function computeTeamOverallStandings(matches: MatchData[]): TeamOverallSt
     const mode = match.gameMode?.toLowerCase() || '';
     const isCtf = mode === 'capturetheflag';
 
-    const t1Name = (match.team1Name || (isCtf ? 'Blue Team' : 'Team 1')).trim().toUpperCase();
-    const t2Name = (match.team2Name || (isCtf ? 'Orange Team' : 'Team 2')).trim().toUpperCase();
+    const t1Name = (match.team1Name || 'Team 1').trim().toUpperCase();
+    const t2Name = (match.team2Name || 'Team 2').trim().toUpperCase();
 
     const t1 = ensureTeam(t1Name);
     const t2 = ensureTeam(t2Name);

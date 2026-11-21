@@ -1048,7 +1048,7 @@ function CtfCard({ match, isLive }: { match: MatchData, isLive?: boolean }) {
         <div className={`flex-1 ${team1Won ? 'bg-cyan-950/50 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]' : 'bg-cyan-950/15 border border-cyan-500/20 opacity-75'} rounded-xl p-3 pt-6 flex flex-col items-center relative overflow-hidden transition-all`}>
           {team1Won && <div className="absolute top-0 right-0 bg-cyan-500 text-cyan-950 text-xs font-black px-4 py-1.5 rounded-bl-xl shadow-md tracking-widest uppercase">Winner</div>}
           <div className="text-cyan-400 font-bold uppercase text-xl flex items-center justify-center gap-2 z-10 w-full truncate mt-1">
-            <span className={`truncate ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Blue Team'}</span>
+            <span className={`truncate ${team1Won ? 'text-white' : ''}`}>{match.team1Name || 'Team 1'}</span>
             <span className="shrink-0 text-[10px] bg-cyan-500/20 border border-cyan-500/30 px-2 py-1 rounded text-cyan-300 font-black">BLUE</span>
           </div>
           <div className="flex items-center gap-2 mt-1 z-10">
@@ -1064,7 +1064,7 @@ function CtfCard({ match, isLive }: { match: MatchData, isLive?: boolean }) {
         <div className={`flex-1 ${team2Won ? 'bg-orange-950/50 border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)]' : 'bg-orange-950/15 border border-orange-500/20 opacity-75'} rounded-xl p-3 pt-6 flex flex-col items-center relative overflow-hidden transition-all`}>
           {team2Won && <div className="absolute top-0 right-0 bg-orange-500 text-white text-xs font-black px-4 py-1.5 rounded-bl-xl shadow-md tracking-widest uppercase">Winner</div>}
           <div className="text-orange-400 font-bold uppercase text-xl flex items-center justify-center gap-2 z-10 w-full truncate mt-1">
-            <span className={`truncate ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Orange Team'}</span>
+            <span className={`truncate ${team2Won ? 'text-white' : ''}`}>{match.team2Name || 'Team 2'}</span>
             <span className="shrink-0 text-[10px] bg-orange-500/20 border border-orange-500/30 px-2 py-1 rounded text-orange-300 font-black">ORANGE</span>
           </div>
           <div className="flex items-center gap-2 mt-1 z-10">
@@ -1100,7 +1100,7 @@ function CompactCtfMatchCard({ match }: { match: MatchData }) {
       </div>
       <div className="flex-1 flex justify-between items-center pl-5 pr-2">
         <div className="flex items-center gap-3 w-[40%]">
-          <span className={`text-base font-bold uppercase truncate ${team1Won ? 'text-cyan-400' : 'text-gray-400'}`}>{match.team1Name || 'Blue Team'}</span>
+          <span className={`text-base font-bold uppercase truncate ${team1Won ? 'text-cyan-400' : 'text-gray-400'}`}>{match.team1Name || 'Team 1'}</span>
           {team1Won && <span className="bg-cyan-500 text-cyan-950 text-[10px] font-black px-2 py-1 rounded uppercase">Win</span>}
         </div>
         
@@ -1118,7 +1118,7 @@ function CompactCtfMatchCard({ match }: { match: MatchData }) {
 
         <div className="flex items-center gap-3 w-[40%] justify-end">
           {team2Won && <span className="bg-orange-600 text-white text-[10px] font-black px-2 py-1 rounded uppercase">Win</span>}
-          <span className={`text-base font-bold uppercase truncate text-right ${team2Won ? 'text-orange-400' : 'text-gray-400'}`}>{match.team2Name || 'Orange Team'}</span>
+          <span className={`text-base font-bold uppercase truncate text-right ${team2Won ? 'text-orange-400' : 'text-gray-400'}`}>{match.team2Name || 'Team 2'}</span>
         </div>
       </div>
     </div>

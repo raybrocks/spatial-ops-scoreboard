@@ -419,7 +419,7 @@ export default function SpectatorPage() {
                            </div>
                          )}
                          <span className={`text-xs font-bold uppercase truncate w-full text-center tracking-wider ${(!isLive && displayedMatch.team1Score > displayedMatch.team2Score) || isLive ? 'text-white' : (isDisplayedCtf ? 'text-cyan-300' : 'text-blue-300')}`}>
-                           {displayedMatch.team1Name || (isDisplayedCtf ? 'Blue Team' : 'Team 1')}
+                           {displayedMatch.team1Name || 'Team 1'}
                          </span>
                          {isDisplayedCtf ? (
                            <div className="flex items-center gap-1.5 mt-1 z-10">
@@ -448,7 +448,7 @@ export default function SpectatorPage() {
                            </div>
                          )}
                          <span className={`text-xs font-bold uppercase truncate w-full text-center tracking-wider ${(!isLive && displayedMatch.team2Score > displayedMatch.team1Score) || isLive ? 'text-white' : 'text-orange-300'}`}>
-                           {displayedMatch.team2Name || (isDisplayedCtf ? 'Orange Team' : 'Team 2')}
+                           {displayedMatch.team2Name || 'Team 2'}
                          </span>
                          {isDisplayedCtf ? (
                            <div className="flex items-center gap-1.5 mt-1 z-10">
@@ -535,7 +535,7 @@ export default function SpectatorPage() {
                         </div>
                       ) : isCtf ? (
                         <div className="flex justify-between items-center px-1">
-                           <span className={`truncate flex-1 text-xs font-semibold ${t1Won ? 'text-cyan-400 font-bold' : 'text-gray-300'}`}>{match.team1Name || 'Blue Team'}</span>
+                           <span className={`truncate flex-1 text-xs font-semibold ${t1Won ? 'text-cyan-400 font-bold' : 'text-gray-300'}`}>{match.team1Name || 'Team 1'}</span>
                            <div className="flex items-center gap-1 px-2">
                              <Flag className="w-3.5 h-3.5 text-cyan-400" />
                              <span className={`font-black text-base ${t1Won ? 'text-white' : 'text-gray-400'}`}>{match.team1Score}</span>
@@ -545,7 +545,7 @@ export default function SpectatorPage() {
                              <span className={`font-black text-base ${t2Won ? 'text-white' : 'text-gray-400'}`}>{match.team2Score}</span>
                              <Flag className="w-3.5 h-3.5 text-orange-400" />
                            </div>
-                           <span className={`truncate flex-1 text-right text-xs font-semibold ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-300'}`}>{match.team2Name || 'Orange Team'}</span>
+                           <span className={`truncate flex-1 text-right text-xs font-semibold ${t2Won ? 'text-orange-400 font-bold' : 'text-gray-300'}`}>{match.team2Name || 'Team 2'}</span>
                         </div>
                       ) : (
                         <div className="flex justify-between items-center px-1">
