@@ -1,4 +1,4 @@
-import { Trophy, Crosshair, Flag, Skull, Target } from 'lucide-react';
+import { Trophy, Crosshair, Skull, Target } from 'lucide-react';
 
 export function TdmBanner() {
   return (
@@ -76,28 +76,133 @@ export function CtfBanner() {
       <div className="absolute bottom-0 left-1/2 right-0 h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-80 blur-[2px]"></div>
 
       <div className="relative z-10 flex flex-col items-center justify-center text-center">
-        <div className="flex items-center gap-3 sm:gap-4 mb-0 relative z-10">
-          <Flag className="w-8 h-8 sm:w-10 sm:h-10 text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,1)] print:text-black print:drop-shadow-none" />
+        <div className="flex items-center justify-center mb-0 relative z-10">
           <h1 className="text-5xl sm:text-7xl font-black italic tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-cyan-100 via-gray-300 to-gray-700 drop-shadow-[0_5px_15px_rgba(0,0,0,1)] print:text-black print:drop-shadow-none print:bg-none uppercase" style={{ WebkitTextStroke: '2px rgba(6,182,212,0.3)' }}>
             CAPTURE THE FLAG
           </h1>
-          <Flag className="w-8 h-8 sm:w-10 sm:h-10 text-orange-400 drop-shadow-[0_0_15px_rgba(249,115,22,1)] print:hidden" />
         </div>
         
-        <div className="relative -mt-3 sm:-mt-5 text-sm sm:text-2xl font-black tracking-widest uppercase flex items-center justify-center print:text-gray-700 z-20">
+        <div className="relative mt-2 sm:mt-0 text-sm sm:text-2xl font-black tracking-widest uppercase flex items-center justify-center print:text-gray-700 z-20">
           <span className="bg-cyan-950/80 border-4 border-cyan-500 text-cyan-300 px-4 py-1 sm:px-8 sm:py-2 rounded-l-lg shadow-[0_0_20px_rgba(6,182,212,0.6),inset_0_0_15px_rgba(6,182,212,0.4)] z-10 -skew-x-12 transform">
             Blue Team
           </span>
-          <span className="text-white italic text-4xl sm:text-6xl font-black z-30 drop-shadow-[0_5px_10px_rgba(0,0,0,0.9)] -mx-3 sm:-mx-5 scale-110">VS</span>
+
+          {/* Crossed textured Blue & Orange flags instead of VS */}
+          <svg
+            viewBox="0 0 280 200"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="relative w-24 h-20 sm:w-36 sm:h-28 -mx-2 sm:-mx-4 -my-4 sm:-my-6 z-30 shrink-0 pointer-events-none drop-shadow-[0_6px_14px_rgba(0,0,0,0.95)] print:hidden"
+          >
+            <defs>
+              {/* Tactical ripstop / woven cloth texture */}
+              <pattern id="ctf-cloth-weave" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(28)">
+                <path d="M 0 3 L 6 3 M 3 0 L 3 6" stroke="rgba(255,255,255,0.24)" strokeWidth="0.75" />
+              </pattern>
+
+              {/* Metallic shaft gradient */}
+              <linearGradient id="ctf-pole-metal" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#334155" />
+                <stop offset="45%" stopColor="#f1f5f9" />
+                <stop offset="100%" stopColor="#475569" />
+              </linearGradient>
+
+              {/* Cyan/Blue billowing flag fabric gradient */}
+              <linearGradient id="ctf-blue-fabric" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#67e8f9" />
+                <stop offset="38%" stopColor="#06b6d4" />
+                <stop offset="72%" stopColor="#0e7490" />
+                <stop offset="100%" stopColor="#083344" />
+              </linearGradient>
+
+              {/* Cyan fabric shadow folds */}
+              <linearGradient id="ctf-blue-folds" x1="0%" y1="50%" x2="100%" y2="50%">
+                <stop offset="0%" stopColor="#000000" stopOpacity="0.35" />
+                <stop offset="28%" stopColor="#a5f3fc" stopOpacity="0.32" />
+                <stop offset="56%" stopColor="#042f2e" stopOpacity="0.48" />
+                <stop offset="80%" stopColor="#22d3ee" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#000000" stopOpacity="0.2" />
+              </linearGradient>
+
+              {/* Orange billowing flag fabric gradient */}
+              <linearGradient id="ctf-orange-fabric" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#fed7aa" />
+                <stop offset="38%" stopColor="#f97316" />
+                <stop offset="72%" stopColor="#c2410c" />
+                <stop offset="100%" stopColor="#431407" />
+              </linearGradient>
+
+              {/* Orange fabric shadow folds */}
+              <linearGradient id="ctf-orange-folds" x1="100%" y1="50%" x2="0%" y2="50%">
+                <stop offset="0%" stopColor="#000000" stopOpacity="0.35" />
+                <stop offset="28%" stopColor="#fed7aa" stopOpacity="0.32" />
+                <stop offset="56%" stopColor="#431407" stopOpacity="0.48" />
+                <stop offset="80%" stopColor="#fb923c" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#000000" stopOpacity="0.2" />
+              </linearGradient>
+
+              {/* Clip paths for each flag silhouette */}
+              <clipPath id="ctf-blue-clip">
+                <path d="M82 27 C58 19, 36 35, 10 24 L25 51 L17 78 C46 86, 78 68, 116 77 Z" />
+              </clipPath>
+              <clipPath id="ctf-orange-clip">
+                <path d="M198 27 C222 19, 244 35, 270 24 L255 51 L263 78 C234 86, 202 68, 164 77 Z" />
+              </clipPath>
+            </defs>
+
+            {/* BLUE / CYAN FLAG (flies top-left) */}
+            <g className="drop-shadow-[0_0_12px_rgba(6,182,212,0.8)]">
+              <g clipPath="url(#ctf-blue-clip)">
+                <path d="M82 27 C58 19, 36 35, 10 24 L25 51 L17 78 C46 86, 78 68, 116 77 Z" fill="url(#ctf-blue-fabric)" />
+                <path d="M10 38 L108 58 L112 69 L14 49 Z" fill="#cffafe" fillOpacity="0.32" />
+                <path d="M82 27 C58 19, 36 35, 10 24 L25 51 L17 78 C46 86, 78 68, 116 77 Z" fill="url(#ctf-blue-folds)" />
+                <rect x="0" y="10" width="130" height="80" fill="url(#ctf-cloth-weave)" />
+                <path d="M77 24 L91 25 L122 76 L109 80 Z" fill="#082f49" fillOpacity="0.9" />
+              </g>
+              <path
+                d="M82 27 C58 19, 36 35, 10 24 L25 51 L17 78 C46 86, 78 68, 116 77 Z"
+                stroke="#67e8f9"
+                strokeWidth="1.75"
+                strokeOpacity="0.9"
+              />
+            </g>
+
+            {/* ORANGE FLAG (flies top-right) */}
+            <g className="drop-shadow-[0_0_12px_rgba(249,115,22,0.8)]">
+              <g clipPath="url(#ctf-orange-clip)">
+                <path d="M198 27 C222 19, 244 35, 270 24 L255 51 L263 78 C234 86, 202 68, 164 77 Z" fill="url(#ctf-orange-fabric)" />
+                <path d="M270 38 L172 58 L168 69 L266 49 Z" fill="#ffedd5" fillOpacity="0.32" />
+                <path d="M198 27 C222 19, 244 35, 270 24 L255 51 L263 78 C234 86, 202 68, 164 77 Z" fill="url(#ctf-orange-folds)" />
+                <rect x="150" y="10" width="130" height="80" fill="url(#ctf-cloth-weave)" />
+                <path d="M203 24 L189 25 L158 76 L171 80 Z" fill="#431407" fillOpacity="0.9" />
+              </g>
+              <path
+                d="M198 27 C222 19, 244 35, 270 24 L255 51 L263 78 C234 86, 202 68, 164 77 Z"
+                stroke="#fdba74"
+                strokeWidth="1.75"
+                strokeOpacity="0.9"
+              />
+            </g>
+
+            {/* CROSSED FLAGPOLES */}
+            <line x1="88" y1="188" x2="203" y2="19" stroke="url(#ctf-pole-metal)" strokeWidth="6" strokeLinecap="round" />
+            <line x1="88" y1="188" x2="203" y2="19" stroke="#fb923c" strokeWidth="1.2" strokeOpacity="0.6" strokeLinecap="round" />
+            <polygon points="209,10 198,17 206,23" fill="#fed7aa" stroke="#ea580c" strokeWidth="1" />
+            <circle cx="195" cy="31" r="2.4" fill="#e2e8f0" stroke="#0f172a" strokeWidth="0.9" />
+            <circle cx="168" cy="71" r="2.4" fill="#e2e8f0" stroke="#0f172a" strokeWidth="0.9" />
+
+            <line x1="192" y1="188" x2="77" y2="19" stroke="url(#ctf-pole-metal)" strokeWidth="6" strokeLinecap="round" />
+            <line x1="192" y1="188" x2="77" y2="19" stroke="#22d3ee" strokeWidth="1.2" strokeOpacity="0.6" strokeLinecap="round" />
+            <polygon points="71,10 82,17 74,23" fill="#cffafe" stroke="#06b6d4" strokeWidth="1" />
+            <circle cx="85" cy="31" r="2.4" fill="#e2e8f0" stroke="#0f172a" strokeWidth="0.9" />
+            <circle cx="112" cy="71" r="2.4" fill="#e2e8f0" stroke="#0f172a" strokeWidth="0.9" />
+          </svg>
+
+          <span className="hidden print:inline text-black italic text-3xl font-black px-2">VS</span>
+
           <span className="bg-orange-950/80 border-4 border-orange-500 text-orange-400 px-4 py-1 sm:px-8 sm:py-2 rounded-r-lg shadow-[0_0_20px_rgba(249,115,22,0.6),inset_0_0_15px_rgba(249,115,22,0.4)] z-10 -skew-x-12 transform">
             Orange Team
           </span>
-        </div>
-        
-        <div className="mt-3 text-[11px] sm:text-xs font-black tracking-[0.3em] uppercase text-cyan-400/80 flex items-center justify-center gap-3">
-          <span className="w-6 sm:w-12 h-px bg-cyan-400/50"></span>
-          BLUE VS ORANGE • CAPTURE THE FLAG
-          <span className="w-6 sm:w-12 h-px bg-orange-400/50"></span>
         </div>
       </div>
     </div>
@@ -134,5 +239,37 @@ export function FfaBanner() {
     </div>
   );
 }
+
+export function OverallBanner() {
+  return (
+    <div className="relative mb-6 mt-2 print:mb-4 overflow-hidden rounded-xl border border-yellow-500/40 bg-gradient-to-b from-[#171204] via-[#0d0c09] to-[#0a0a0a] p-5 shadow-[0_0_40px_rgba(234,179,8,0.2)]">
+      {/* Background arcade grid */}
+      <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(234,179,8,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(234,179,8,0.18) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+      
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none bg-[linear-gradient(transparent_50%,rgba(0,0,0,1)_50%)] bg-[length:100%_4px]"></div>
+
+      {/* Gold bottom laser glow */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-80 blur-[2px]"></div>
+
+      <div className="relative z-10 flex flex-col items-center justify-center text-center">
+        <div className="flex items-center gap-3 sm:gap-4 mb-0 relative z-10">
+          <Trophy className="w-7 h-7 sm:w-9 sm:h-9 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,1)] print:text-black print:drop-shadow-none" />
+          <h1 className="text-4xl sm:text-6xl font-black italic tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-yellow-100 via-amber-300 to-yellow-700 drop-shadow-[0_5px_15px_rgba(0,0,0,1)] print:text-black print:drop-shadow-none print:bg-none uppercase" style={{ WebkitTextStroke: '2px rgba(250,204,21,0.3)' }}>
+            OVERALL STANDINGS
+          </h1>
+          <Trophy className="w-7 h-7 sm:w-9 sm:h-9 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,1)] print:hidden" />
+        </div>
+        
+        <div className="relative mt-2 text-[11px] sm:text-sm font-black tracking-[0.25em] sm:tracking-[0.35em] uppercase text-yellow-400/90 drop-shadow-[0_0_10px_rgba(234,179,8,0.6)] print:text-gray-700 flex items-center justify-center gap-2 sm:gap-4 z-20">
+          <span className="w-6 sm:w-12 h-px bg-yellow-500/50 hidden sm:block"></span>
+          SAMMENLAGT • TDM &amp; CTF TOURNAMENT CHAMPION
+          <span className="w-6 sm:w-12 h-px bg-yellow-500/50 hidden sm:block"></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 

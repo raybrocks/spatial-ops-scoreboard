@@ -7,6 +7,7 @@ import { Trophy, Flag, Skull, Target } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { useTournaments } from '@/hooks/use-tournaments';
 import { getTournamentsForDate, getTournamentTitle, groupMatchesByTournament } from '@/lib/tournaments';
+import { computeTeamOverallStandings } from '@/lib/standings';
 import { getSurvivalHighscores } from '@/lib/survival-highscores';
 import { HighscoreBadge } from '@/components/HighscoreBadge';
 import { PlayerStat, MatchData } from '@/types/match';
@@ -128,38 +129,101 @@ export default function SpectatorPage() {
 
   const survivalHighscores = useMemo(() => getSurvivalHighscores(matches), [matches]);
 
-  const dailySummary = useMemo(() => {
-    const teamSummary: Record<string, { name: string, totalScore: number, wins: number }> = {};
-    const soloSummary: Record<string, { name: string, totalScore: number, wins: number }> = {};
+  const { dailySummary, leaderboardMode } = useMemo(() => {
+    const hasTdm = sortedMatches.some((m) => {
+      const mode = m.gameMode?.toLowerCase() || '';
+      return mode !== 'survival' && mode !== 'freeforall' && mode !== 'capturetheflag';
+    });
+    const hasCtf = sortedMatches.some((m) => m.gameMode?.toLowerCase() === 'capturetheflag');
 
-    sortedMatches.forEach(match => {
-      const isFfa = match.gameMode?.toLowerCase() === 'freeforall';
-      if (isFfa) {
+    if (hasTdm || hasCtf) {
+      const teamStandings = computeTeamOverallStandings(sortedMatches);
+
+      if (hasTdm && hasCtf) {
+        return {
+          leaderboardMode: 'combined' as const,
+          dailySummary: teamStandings.map((t) => ({
+            name: t.name,
+            primaryValue: t.wins,
+            subLabel: `${t.totalPlayerScore.toLocaleString('no-NO')} PTS`,
+            wins: t.wins,
+          })),
+        };
+      }
+
+      if (hasCtf) {
+        const ctfSorted = [...teamStandings].sort((a, b) =>
+          b.wins !== a.wins ? b.wins - a.wins : b.ctfFlags - a.ctfFlags
+        );
+        return {
+          leaderboardMode: 'ctf' as const,
+          dailySummary: ctfSorted.map((t) => ({
+            name: t.name,
+            primaryValue: t.ctfFlags,
+            subLabel: `${t.wins} WIN${t.wins !== 1 ? 'S' : ''}`,
+            wins: t.wins,
+          })),
+        };
+      }
+
+      const tdmSorted = [...teamStandings].sort((a, b) => b.tdmScore - a.tdmScore);
+      return {
+        leaderboardMode: 'tdm' as const,
+        dailySummary: tdmSorted.map((t) => ({
+          name: t.name,
+          primaryValue: t.tdmScore,
+          subLabel: undefined as string | undefined,
+          wins: t.wins,
+        })),
+      };
+    }
+
+    const soloSummary: Record<string, { name: string; totalScore: number; wins: number }> = {};
+    const survivalSummary: Record<string, { name: string; totalScore: number; wins: number }> = {};
+
+    sortedMatches.forEach((match) => {
+      const mode = match.gameMode?.toLowerCase() || '';
+      if (mode === 'freeforall') {
         const sorted = [...match.playerStats].sort((a, b) => b.score - a.score);
         const winnerName = sorted.length > 0 && sorted[0].score > 0 ? sorted[0].playerName : null;
-        match.playerStats.forEach(p => {
+        match.playerStats.forEach((p) => {
           if (p.isBot) return;
           if (!soloSummary[p.playerName]) soloSummary[p.playerName] = { name: p.playerName, totalScore: 0, wins: 0 };
           soloSummary[p.playerName].totalScore += p.score;
           if (winnerName && p.playerName === winnerName) soloSummary[p.playerName].wins += 1;
         });
-      } else {
+      } else if (mode === 'survival') {
         const t1 = (match.team1Name || 'Team 1').toUpperCase();
-        const t2 = (match.team2Name || 'Team 2').toUpperCase();
-        
-        if (!teamSummary[t1]) teamSummary[t1] = { name: t1, totalScore: 0, wins: 0 };
-        if (!teamSummary[t2]) teamSummary[t2] = { name: t2, totalScore: 0, wins: 0 };
-        
-        teamSummary[t1].totalScore += match.team1Score;
-        teamSummary[t2].totalScore += match.team2Score;
-        if (match.team1Score > match.team2Score) teamSummary[t1].wins += 1;
-        if (match.team2Score > match.team1Score) teamSummary[t2].wins += 1;
+        if (!survivalSummary[t1]) survivalSummary[t1] = { name: t1, totalScore: 0, wins: 0 };
+        survivalSummary[t1].totalScore = Math.max(survivalSummary[t1].totalScore, match.team1Score || 0);
       }
     });
 
-    const teamList = Object.values(teamSummary).sort((a, b) => b.totalScore - a.totalScore);
-    if (teamList.length > 0) return teamList;
-    return Object.values(soloSummary).sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.totalScore - a.totalScore);
+    const soloList = Object.values(soloSummary).sort((a, b) =>
+      b.wins !== a.wins ? b.wins - a.wins : b.totalScore - a.totalScore
+    );
+    if (soloList.length > 0) {
+      return {
+        leaderboardMode: 'ffa' as const,
+        dailySummary: soloList.map((p) => ({
+          name: p.name,
+          primaryValue: p.totalScore,
+          subLabel: `${p.wins} WIN${p.wins !== 1 ? 'S' : ''}`,
+          wins: p.wins,
+        })),
+      };
+    }
+
+    const survList = Object.values(survivalSummary).sort((a, b) => b.totalScore - a.totalScore);
+    return {
+      leaderboardMode: 'survival' as const,
+      dailySummary: survList.map((t) => ({
+        name: t.name,
+        primaryValue: t.totalScore,
+        subLabel: undefined as string | undefined,
+        wins: t.wins,
+      })),
+    };
   }, [sortedMatches]);
 
   if (!isLoaded) return <div className="h-screen w-screen bg-[#0A0A0A]"></div>;
@@ -187,8 +251,10 @@ export default function SpectatorPage() {
             <div className="flex items-center gap-4 pr-8 border-r border-white/10">
                <Trophy className="w-10 h-10 text-yellow-500" />
                <div>
-                 <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">Leaderboard</div>
-                 <div className="text-base font-black text-white">{format(new Date(), 'dd.MM.yyyy')}</div>
+                 <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">
+                   {leaderboardMode === 'combined' ? 'Sammenlagt (TDM+CTF)' : 'Leaderboard'}
+                 </div>
+                 <div className="text-base font-black text-white">{format(parseISO(todayDate), 'dd.MM.yyyy')}</div>
                  {dayTournaments.length > 0 && (
                    <select
                      value={selectedTournamentId}
@@ -217,7 +283,33 @@ export default function SpectatorPage() {
                   <div className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-2">
                     {team.name} {idx === 0 && <span className="bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded text-[9px]">1ST</span>}
                   </div>
-                  <div className="text-4xl font-black text-white leading-none">{team.totalScore?.toLocaleString('no-NO')}</div>
+                  {leaderboardMode === 'combined' ? (
+                    <>
+                      <div className={`text-3xl font-black leading-none ${idx === 0 ? 'text-yellow-400' : 'text-white'}`}>
+                        {team.primaryValue} <span className="text-xs uppercase tracking-wider">Seire</span>
+                      </div>
+                      {team.subLabel && (
+                        <div className="text-[10px] font-mono font-bold text-gray-400 mt-1">{team.subLabel}</div>
+                      )}
+                    </>
+                  ) : leaderboardMode === 'ctf' ? (
+                    <>
+                      <div className="flex items-center gap-1.5 text-3xl font-black text-cyan-400 leading-none">
+                        <Flag className="w-5 h-5 fill-cyan-400/20" />
+                        <span>{team.primaryValue}</span>
+                      </div>
+                      {team.subLabel && (
+                        <div className="text-[10px] font-mono font-bold text-gray-400 mt-1">{team.subLabel}</div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-4xl font-black text-white leading-none">{team.primaryValue?.toLocaleString('no-NO')}</div>
+                      {team.subLabel && (
+                        <div className="text-[10px] font-mono font-bold text-gray-400 mt-1">{team.subLabel}</div>
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
             </div>

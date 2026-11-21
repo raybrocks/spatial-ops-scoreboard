@@ -7,6 +7,7 @@ import { Trophy, Crosshair, Flag, Skull, Target } from 'lucide-react';
 import { useMatchData } from '@/hooks/use-match-data';
 import { useTournaments } from '@/hooks/use-tournaments';
 import { getTournamentsForDate, getTournamentTitle, groupMatchesByTournament } from '@/lib/tournaments';
+import { computeTeamOverallStandings } from '@/lib/standings';
 import { getSurvivalHighscores } from '@/lib/survival-highscores';
 import { HighscoreBadge } from '@/components/HighscoreBadge';
 import { TdmBanner, SurvivalBanner, CtfBanner, FfaBanner } from '@/components/SectionTitles';
@@ -251,6 +252,10 @@ export default function TVPage() {
     });
   }, [survivalMatches]);
 
+  const overallTeamSummary = useMemo(() => {
+    return computeTeamOverallStandings(sortedMatches);
+  }, [sortedMatches]);
+
   if (!isLoaded) return <div className="h-screen bg-[#0A0A0A] flex items-center justify-center text-gray-500 font-bold tracking-widest uppercase">Loading Live Data...</div>;
 
   const activeCount = [
@@ -317,6 +322,58 @@ export default function TVPage() {
                <TeamDeathmatchCard match={liveMatch} isLive />
              )}
            </div>
+        </div>
+      )}
+
+      {/* OVERALL COMBINED STANDINGS STRIP (when TDM + CTF are both played) */}
+      {teamDeathmatchMatches.length > 0 && ctfMatches.length > 0 && overallTeamSummary.length > 0 && !(sortedMatches.length === 0 && liveMatch) && (
+        <div className="shrink-0 w-full mt-2 mb-1 bg-gradient-to-r from-[#141004] via-[#121212] to-[#141004] border border-yellow-500/40 rounded-xl px-5 py-2.5 shadow-[0_0_25px_rgba(234,179,8,0.18)] flex items-center gap-6">
+          <div className="flex items-center gap-3 pr-5 border-r border-yellow-500/20 shrink-0">
+            <Trophy className="w-7 h-7 text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]" />
+            <div className="flex flex-col">
+              <span className="text-xs font-black tracking-[0.2em] uppercase text-yellow-400 leading-tight">Sammenlagt</span>
+              <span className="text-[10px] font-bold tracking-widest uppercase text-gray-400">TDM + CTF Total</span>
+            </div>
+          </div>
+
+          <div className="flex-1 flex gap-3 min-w-0">
+            {overallTeamSummary.slice(0, 4).map((team, idx) => (
+              <div
+                key={team.name}
+                className={`flex-1 min-w-0 relative overflow-hidden rounded-lg px-4 py-2 flex items-center justify-between gap-3 ${idx === 0 ? 'bg-yellow-900/35 border border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.25)]' : 'bg-white/[0.04] border border-white/10'}`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`text-2xl font-black leading-none shrink-0 ${idx === 0 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                    {idx + 1}
+                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-base font-black uppercase tracking-wider truncate ${idx === 0 ? 'text-white' : 'text-gray-200'}`}>
+                        {team.name}
+                      </span>
+                      {idx === 0 && (
+                        <span className="bg-yellow-500 text-yellow-950 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
+                          Total Winner
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-gray-400 uppercase tracking-wider truncate">
+                      TDM {team.tdmWins}-{team.tdmLosses} • CTF {team.ctfWins}-{team.ctfLosses} • Diff {team.playerScoreDiff >= 0 ? '+' : ''}{team.playerScoreDiff.toLocaleString('no-NO')}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end shrink-0 text-right">
+                  <span className={`text-xl font-black leading-none ${idx === 0 ? 'text-yellow-400' : 'text-white'}`}>
+                    {team.wins} <span className="text-[10px] uppercase tracking-wider">Seire</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-gray-400 mt-0.5">
+                    {team.totalPlayerScore.toLocaleString('no-NO')} PTS
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
